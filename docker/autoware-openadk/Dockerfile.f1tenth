@@ -4,11 +4,12 @@
 # Todo: setup Nvidia ISAAC ROS vSLAM
 # todo: setup particle filter
 # todo: install Autoware dev tools manually since we're not using their container or modify setup-dev-env and ansible scripts
-# pull base image
+# pull base image. Any base image with CUDA, cuDNN, TensorRT and Pytorch installed. Optionally OpenCV, tensorflow, etc
 # Autoware: https://github.com/autowarefoundation/autoware/pkgs/container/autoware-universe/versions?filters%5Bversion_type%5D=tagged
 # or OSRF ROS2 or Dusty-NV
 #FROM ghcr.io/autowarefoundation/autoware-openadk:latest-humble-devel-cuda
-FROM privvyledge/r36.2.0-ros-humble-ml:latest
+#FROM privvyledge/r36.2.0-ros-humble-ml:latest
+FROM nvcr.io/nvidia/l4t-ml:r36.2.0-py3
 
 # Set up the shell
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
@@ -102,6 +103,10 @@ ARG BUILD_HOME=$BUILD_HOME
 RUN mkdir -p "$BUILD_HOME/src"
 
 #################################################### (Optional) Setup ROS2
+WORKDIR /
+COPY ../../install_ros_desktop.sh install_ros_desktop.sh
+RUN chmod +x install_ros_desktop.sh && ./install_ros_desktop.sh && rm install_ros_desktop.sh
+
 WORKDIR $BUILD_HOME/src
 
 #################################################### Setup TF2 and Geometry2
@@ -196,15 +201,6 @@ ARG AUTOWARE_FOLDER_NAME='autoware_f1tenth'
 RUN git clone https://github.com/privvyledge/autoware.f1tenth.git && cd autoware.f1tenth && mkdir src  && \
     vcs import src < autoware.repos && \
     chmod +x install_autoware_dependencies.sh && ./install_autoware_dependencies.sh
-
-#### Setup Tensorrt YOLOX (https://github.com/autowarefoundation/autoware/tree/main/ansible/roles/artifacts). Note should be done automatically but just in case
-RUN mkdir -p ~/autoware_data/tensorrt_yolox/ && wget -P ~/autoware_data/tensorrt_yolox/ \
-       https://awf.ml.dev.web.auto/perception/models/yolox-tiny.onnx \
-       https://awf.ml.dev.web.auto/perception/models/yolox-sPlus-opt.onnx \
-       https://awf.ml.dev.web.auto/perception/models/yolox-sPlus-opt.EntropyV2-calibration.table \
-       https://awf.ml.dev.web.auto/perception/models/object_detection_yolox_s/v1/yolox-sPlus-T4-960x960-pseudo-finetune.onnx \
-       https://awf.ml.dev.web.auto/perception/models/object_detection_yolox_s/v1/yolox-sPlus-T4-960x960-pseudo-finetune.EntropyV2-calibration.table \
-       https://awf.ml.dev.web.auto/perception/models/label.txt
 
 WORKDIR /sdks
 
@@ -397,6 +393,9 @@ RUN echo 'alias build="colcon build --symlink-install  --event-handlers console_
     echo 'export ACADOS_PATH=${ACADOS_ROOT}' >> ~/.bashrc && \
     echo 'export ACADOS_SOURCE_DIR=${ACADOS_ROOT}' >> ~/.bashrc && \
     echo 'export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${ACADOS_ROOT}/lib' >> ~/.bashrc && \
+    echo "export CCACHE_DIR=/ccache" >> ~/.bashrc  && \
+    echo "export CC='/usr/lib/ccache/gcc'" >> ~/.bashrc  && \
+    echo "export CXX='/usr/lib/ccache/g++'" >> ~/.bashrc  && \
     echo "export RCUTILS_COLORIZED_OUTPUT=1" >> ~/.bashrc && \
     echo 'export RCUTILS_CONSOLE_OUTPUT_FORMAT="[{severity} {time}] [{name}]: {message} ({function_name}() at {file_name}:{line_number})"' >> ~/.bashrc && \
     echo "source /usr/share/colcon_cd/function/colcon_cd.sh" >> ~/.bashrc && \

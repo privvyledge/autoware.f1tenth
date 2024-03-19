@@ -1,4 +1,5 @@
 #!/bin/bash
+# Autoware documentation: https://autowarefoundation.github.io/autoware-documentation/main/installation/autoware/source-installation/
 
 ##### (optional) Hold nvidia related packages so they are not overwritten
 #sudo apt-mark hold  \
@@ -87,8 +88,8 @@ sudo apt update && sudo apt install -y \
   python3-pytest-rerunfailures
 
 
-########## Download and unpack artifacts. todo: make this optional
-# Download Artifacts
+####################### Download and unpack artifacts. todo: make this optional
+######### Download Artifacts
 # yabloc_pose_initializer
 mkdir -p ~/autoware_data/yabloc_pose_initializer/
 wget -P ~/autoware_data/yabloc_pose_initializer/ \
@@ -168,3 +169,21 @@ mkdir -p ~/autoware_data/lidar_apollo_segmentation_tvm/models/baidu_cnn
 wget -P ~/autoware_data/lidar_apollo_segmentation_tvm/ \
       https://autoware-modelzoo.s3.us-east-2.amazonaws.com/models/3.0.0-20221221/baidu_cnn-x86_64-llvm-3.0.0-20221221.tar.gz
 
+######### Extract Artifacts
+# yabloc_pose_initializer
+tar -xf ~/autoware_data/yabloc_pose_initializer/resources.tar.gz \
+       -C ~/autoware_data/yabloc_pose_initializer/
+
+# tvm_utility
+tar -xf ~/autoware_data/tvm_utility/yolo_v2_tiny-x86_64-llvm-3.0.0-20221221.tar.gz \
+       -C ~/autoware_data/tvm_utility/models/yolo_v2_tiny/
+
+# lidar_centerpoint_tvm
+tar -xf ~/autoware_data/lidar_centerpoint_tvm/centerpoint_encoder-x86_64-llvm-3.0.0-20221221.tar.gz \
+       -C ~/autoware_data/lidar_centerpoint_tvm/models/centerpoint_encoder
+tar -xf ~/autoware_data/lidar_centerpoint_tvm/centerpoint_backbone-x86_64-llvm-3.0.0-20221221.tar.gz \
+       -C ~/autoware_data/lidar_centerpoint_tvm/models/centerpoint_backbone
+
+# lidar_apollo_segmentation_tvm
+tar -xf ~/autoware_data/lidar_apollo_segmentation_tvm/baidu_cnn-x86_64-llvm-3.0.0-20221221.tar.gz \
+       -C ~/autoware_data/lidar_apollo_segmentation_tvm/models/baidu_cnn

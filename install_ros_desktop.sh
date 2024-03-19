@@ -37,15 +37,25 @@ rosdep install --from-paths src --ignore-src -y --skip-keys "fastcdr rti-connext
 
 # Environment setup (~/.bashrc, /etc/bash.bashrc)
 # todo: ROS_DISTRO, ROS_ROOT, ROS_PACKAGE environment variables should be set
-echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
-#echo "source /opt/ros/${ROS_DISTRO}/setup.bash" > /etc/bash.bashrc
-echo "export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp" >> ~/.bashrc
-echo "export RCUTILS_COLORIZED_OUTPUT=1" >> ~/.bashrc
-echo 'export RCUTILS_CONSOLE_OUTPUT_FORMAT="[{severity} {time}] [{name}]: {message} ({function_name}() at {file_name}:{line_number})"' >> ~/.bashrc
-echo source `pwd`/ros2_ws/install/local_setup.bash >> ~/.bashrc
-echo "export CYCLONEDDS_URI=file:///home/gosling1/cyclone_dds_settings/cyclonedds_config.xml" >> ~/.bashrc
+{
+  echo "source /opt/ros/humble/setup.bash"
+  echo "export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp"
+  echo "export RCUTILS_COLORIZED_OUTPUT=1"
+  echo 'export RCUTILS_CONSOLE_OUTPUT_FORMAT="[{severity} {time}] [{name}]: {message} ({function_name}() at {file_name}:{line_number})"'
+  echo source `pwd`/ros2_ws/install/local_setup.bash
+  echo "export CYCLONEDDS_URI=file://${HOME}/cyclone_dds_settings/cyclonedds_config.xml"
+  echo "export CCACHE_DIR=/ccache"
+  echo "export CC='/usr/lib/ccache/gcc'"
+  echo "export CXX='/usr/lib/ccache/g++'"
+} >> ~/.bashrc
 
-echo "export CCACHE_DIR=/ccache" >> ~/.bashrc
-echo "export CC='/usr/lib/ccache/gcc'" >> ~/.bashrc
-echo "export CXX='/usr/lib/ccache/g++'" >> ~/.bashrc
+#echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
+#echo "export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp" >> ~/.bashrc
+#echo "export RCUTILS_COLORIZED_OUTPUT=1" >> ~/.bashrc
+#echo 'export RCUTILS_CONSOLE_OUTPUT_FORMAT="[{severity} {time}] [{name}]: {message} ({function_name}() at {file_name}:{line_number})"' >> ~/.bashrc
+#echo source `pwd`/ros2_ws/install/local_setup.bash >> ~/.bashrc
+#echo "export CYCLONEDDS_URI=file:///home/gosling1/cyclone_dds_settings/cyclonedds_config.xml" >> ~/.bashrc
+#echo "export CCACHE_DIR=/ccache" >> ~/.bashrc
+#echo "export CC='/usr/lib/ccache/gcc'" >> ~/.bashrc
+#echo "export CXX='/usr/lib/ccache/g++'" >> ~/.bashrc
 
