@@ -15,7 +15,7 @@ FROM nvcr.io/nvidia/l4t-ml:r36.2.0-py3
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ENV TZ=America/New_York
 
-# Setup user
+# Setup user todo
 ARG USER=autoware
 ARG USERNAME=${USER}
 ENV USERNAME ${USERNAME}
@@ -23,18 +23,26 @@ ENV USERNAME ${USERNAME}
 ARG USER_UID=1000
 ARG USER_GID=$USER_UID
 
+#RUN groupadd --gid $USER_GID $USERNAME && \
+#        useradd --uid $USER_UID --gid $USER_GID -m $USERNAME && \
+#        echo "$USERNAME:$USERNAME" | chpasswd && \
+#        usermod --shell /bin/bash $USERNAME && \
+#        usermod -aG sudo,video $USERNAME && \
+#        usermod  --uid $USER_UID $USERNAME && \
+#        echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/$USERNAME && \
+#        chmod 0440 /etc/sudoers.d/$USERNAME
+
 RUN groupadd --gid $USER_GID $USERNAME && \
         useradd --uid $USER_UID --gid $USER_GID -m $USERNAME && \
         echo "$USERNAME:$USERNAME" | chpasswd && \
         usermod --shell /bin/bash $USERNAME && \
         usermod -aG sudo,video $USERNAME && \
-        usermod  --uid $USER_UID $USERNAME && \
-        echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/$USERNAME && \
-        chmod 0440 /etc/sudoers.d/$USERNAME
+        usermod  --uid $USER_UID $USERNAME
 
 # Setup env and shell
 ENV LOGNAME root
-ENV DEBIAN_FRONTEND noninteractive
+ARG DEBIAN_FRONTEND=noninteractive
+ARG DEBCONF_NONINTERACTIVE_SEEN=true
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ENV TZ=America/New_York
@@ -47,8 +55,19 @@ ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 
 
 ENV NVIDIA_DRIVER_CAPABILITIES all
-# todo: test with newer images
 ENV NVIDIA_VISIBLE_DEVICES all  # causes graphical failures
+
+# Install Sudo
+RUN apt-get update && DEBIAN_FRONTEND="noninteractive" apt-get install -yq sudo tzdata && \
+    ln -fns /usr/share/zoneinfo/${TZ} /etc/localtime && echo $TZ > /etc/timezone && \
+    dpkg-reconfigure -f noninteractive tzdata
+
+#################################################### (Optional) Setup ROS2
+WORKDIR /
+COPY ../../install_ros_desktop.sh /tmp/install_ros_desktop.sh
+RUN sudo apt update && export DEBIAN_FRONTEND="noninteractive" && \
+    chmod +x /tmp/install_ros_desktop.sh && export DEBIAN_FRONTEND="noninteractive"  && \
+    DEBIAN_FRONTEND="noninteractive"  bash /tmp/install_ros_desktop.sh
 
 # Install packages
 RUN sudo apt-get update -y && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
@@ -93,7 +112,7 @@ RUN sudo apt-get update -y && DEBIAN_FRONTEND="noninteractive" sudo apt-get inst
     qtcreator && \
     sudo rm -rf /var/lib/apt/lists/*
 
-# Install Python Packages
+# Install Python Packages. Todo: add ultralytics, YOLOv8, YOLOv4, etc. dependencies
 RUN python3 -m pip install do-mpc casadi
 
 # Initialize ROS workspace
@@ -101,11 +120,6 @@ ENV BUILD_HOME=/f1tenth_ws
 ARG BUILD_HOME=$BUILD_HOME
 
 RUN mkdir -p "$BUILD_HOME/src"
-
-#################################################### (Optional) Setup ROS2
-WORKDIR /
-COPY ../../install_ros_desktop.sh install_ros_desktop.sh
-RUN chmod +x install_ros_desktop.sh && ./install_ros_desktop.sh && rm install_ros_desktop.sh
 
 WORKDIR $BUILD_HOME/src
 
@@ -136,6 +150,17 @@ RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install
 #    ros-${ROS_DISTRO}-gazebo-ros-pkgs && \
 #    cd "$BUILD_HOME/src" && git clone --recursive https://github.com/ros-planning/navigation2.git -b ${ROS_DISTRO} && \
 #    sudo rm -rf /var/lib/apt/lists/*
+
+#-------------------------------------------------
+# Setup Spatio Temporal Voxel Layer (STVL) and other voxel packages for 3D occupancy representation.
+#-------------------------------------------------
+#RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+#    ros-${ROS_DISTRO}-spatio-temporal-voxel-layer ros-${ROS_DISTRO}-nonpersistent-voxel-layer
+
+RUN cd "${BUILD_HOME}/src" && \
+#    git clone -b ros2 https://github.com/SteveMacenski/spatio_temporal_voxel_layer.git && \
+    git clone -b ros2 https://github.com/SteveMacenski/nonpersistent_voxel_layer.git
+
 
 #################################################### (Optional) Setup SLAM toolbox. Use galactic and above (or noetic) to get pose
 RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
@@ -205,7 +230,7 @@ RUN git clone https://github.com/privvyledge/autoware.f1tenth.git && cd autoware
 WORKDIR /sdks
 
 # Install Acados.
-#ARCHITECTURES: "" (Recommended), ARMV8A_ARM_CORTEX_A57-TX2, ARMV8A_ARM_CORTEX_A76-ORIN, X64_AUTOMATIC, GENERIC
+#ARCHITECTURES: "" (Recommended), ARMV8A_ARM_CORTEX_A57-TX2, Orin Nano, ARMV8A_ARM_CORTEX_A76-ORIN, X64_AUTOMATIC, GENERIC
 # Could remove the -DBLASFEO_TARGET specification and should be automatically detected
 ARG TX2_ARCHITECTURE=ARMV8A_ARM_CORTEX_A57
 ARG ORIN_ARCHITECTURE=ARMV8A_ARM_CORTEX_A76
@@ -310,6 +335,14 @@ RUN cd "$BUILD_HOME/src" && git clone https://github.com/introlab/rtabmap.git &&
 #    ros-${ROS_DISTRO}-rtabmap* && \
 #    sudo rm -rf /var/lib/apt/lists/*
 
+#----------------------------------------------
+# Install ROSBag support
+#----------------------------------------------
+RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+    ros-${ROS_DISTRO}-ros2bag ros-${ROS_DISTRO}-rosbag2* && \
+    sudo rm -rf /var/lib/apt/lists/*
+
+
 ##--------------------------------
 ## Setup NVIDIA Isaac packages
 ##--------------------------------
@@ -355,16 +388,16 @@ ENV PYTHONWARNINGS=ignore:::setuptools.command.install,ignore:::setuptools.comma
 WORKDIR $BUILD_HOME
 #ARG MAKEFLAGS="-j4 -l4"
 RUN sudo apt update && \
-    sudo rosdep init && rosdep update && \
+    rosdep update && \
     source /opt/ros/${ROS_DISTRO}/setup.bash && \
-    rosdep install --from-paths src --ignore-src -r -y --skip-keys "rf2o_laser_odometry librealsense2 realsense2_camera libopencv-dev" && \
+    rosdep install --from-paths src --ignore-src -r -y --skip-keys "rf2o_laser_odometry librealsense2 realsense2_camera libopencv-dev  libopencv-contrib-dev libopencv-imgproc-dev python-opencv python3-opencv" && \
     colcon build --symlink-install --event-handlers console_direct+ --base-paths src --cmake-args '  -Wno-dev' ' --no-warn-unused-cli' ' -DBUILD_ACCELERATE_GPU_WITH_GLSL=ON' ' -DCMAKE_BUILD_TYPE=Release' ' -DCMAKE_EXPORT_COMPILE_COMMANDS=ON' ' -DCMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs' ' -DCMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined"  -DDOWNLOAD_ARTIFACTS=ON'
 
 #-----------------------------
 # Setup microros agent, i.e create_agent_ws, then build_agent. Modified to skip rosdep keys and specify colcon build arguments
 #-----------------------------
 RUN bash -c 'source install/setup.bash; \
-             EXTERNAL_SKIP="lio_sam fast_lio rf2o_laser_odometry librealsense2 realsense2_camera libopencv-dev"; \
+             EXTERNAL_SKIP="lio_sam fast_lio rf2o_laser_odometry librealsense2 realsense2_camera libopencv-dev libopencv-contrib-dev libopencv-imgproc-dev python-opencv python3-opencv"; \
              ros2 run micro_ros_setup create_agent_ws.sh; \
              ros2 run micro_ros_setup build_agent.sh'
 
