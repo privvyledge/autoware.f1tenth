@@ -53,7 +53,7 @@ sudo sh -c 'echo "deb [trusted=yes] https://s3.amazonaws.com/autonomoustuff-repo
 sudo apt update
 sudo apt install -y ros-"${ROS_DISTRO}"-pacmod3
 
-######## Install Kisak Mesa
+######## Install Kisak Mesa (optional)
 # Add the Kisak Mesa PPA
 sudo add-apt-repository -y ppa:kisak/kisak-mesa
 sudo apt-get update

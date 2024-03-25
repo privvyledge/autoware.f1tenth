@@ -9,7 +9,11 @@
 # or OSRF ROS2 or Dusty-NV
 #FROM ghcr.io/autowarefoundation/autoware-openadk:latest-humble-devel-cuda
 #FROM privvyledge/r36.2.0-ros-humble-ml:latest
-FROM nvcr.io/nvidia/l4t-ml:r36.2.0-py3
+#FROM nvcr.io/nvidia/l4t-ml:r36.2.0-py3
+#FROM dustynv/ros:humble-desktop-pytorch-l4t-r35.4.1
+FROM isaac_ros_dev-aarch64:latest
+
+# Todo: uninstall libpcl-dev. Install PCL at the top. Set RMW as cyclone. Setup Nova carter docker stuff without pcl. This dockerfile should be much smaller since most Nav2 packages are already installed.
 
 # Set up the shell
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
@@ -57,17 +61,17 @@ ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 ENV NVIDIA_DRIVER_CAPABILITIES all
 ENV NVIDIA_VISIBLE_DEVICES all  # causes graphical failures
 
-# Install Sudo
-RUN apt-get update && DEBIAN_FRONTEND="noninteractive" apt-get install -yq sudo tzdata && \
-    ln -fns /usr/share/zoneinfo/${TZ} /etc/localtime && echo $TZ > /etc/timezone && \
-    dpkg-reconfigure -f noninteractive tzdata
+## Install Sudo
+#RUN apt-get update && DEBIAN_FRONTEND="noninteractive" apt-get install -yq sudo tzdata && \
+#    ln -fns /usr/share/zoneinfo/${TZ} /etc/localtime && echo $TZ > /etc/timezone && \
+#    dpkg-reconfigure -f noninteractive tzdata
 
 #################################################### (Optional) Setup ROS2
-WORKDIR /
-COPY ../../install_ros_desktop.sh /tmp/install_ros_desktop.sh
-RUN sudo apt update && export DEBIAN_FRONTEND="noninteractive" && \
-    chmod +x /tmp/install_ros_desktop.sh && export DEBIAN_FRONTEND="noninteractive"  && \
-    DEBIAN_FRONTEND="noninteractive"  bash /tmp/install_ros_desktop.sh
+#WORKDIR /
+#COPY ../../install_ros_desktop.sh /tmp/install_ros_desktop.sh
+#RUN sudo apt update && export DEBIAN_FRONTEND="noninteractive" && \
+#    chmod +x /tmp/install_ros_desktop.sh && export DEBIAN_FRONTEND="noninteractive"  && \
+#    DEBIAN_FRONTEND="noninteractive"  bash /tmp/install_ros_desktop.sh
 
 # Install packages
 RUN sudo apt-get update -y && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
@@ -123,6 +127,15 @@ RUN mkdir -p "$BUILD_HOME/src"
 
 WORKDIR $BUILD_HOME/src
 
+################################################### remove CUDA built OPENCV to avoid installation issues. Otherwise, all packages here must be manually built/compiled from sources. Todo: remove and generate the dependencies of all packages installed via apt or rosdep then just clone the rest.
+RUN sudo apt purge -y *opencv*
+
+#################################################### (optional) Setup Nvidia Isaac ROS2
+RUN wget -qO - https://isaac.download.nvidia.com/isaac-ros/repos.key | sudo apt-key add - && \
+    echo 'deb https://isaac.download.nvidia.com/isaac-ros/ubuntu/main focal main' | sudo tee -a /etc/apt/sources.list && \
+    sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg && \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu focal main" | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
+
 #################################################### Setup TF2 and Geometry2
 RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
     ros-${ROS_DISTRO}-tf2-tools \
@@ -158,7 +171,7 @@ RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install
 #    ros-${ROS_DISTRO}-spatio-temporal-voxel-layer ros-${ROS_DISTRO}-nonpersistent-voxel-layer
 
 RUN cd "${BUILD_HOME}/src" && \
-#    git clone -b ros2 https://github.com/SteveMacenski/spatio_temporal_voxel_layer.git && \
+    git clone -b ros2 https://github.com/SteveMacenski/spatio_temporal_voxel_layer.git && \
     git clone -b ros2 https://github.com/SteveMacenski/nonpersistent_voxel_layer.git
 
 
@@ -254,7 +267,7 @@ RUN mkdir -p "/sdks/" && cd "/sdks/" && \
     python3 -m pip install -e ${ACADOS_ROOT}/interfaces/acados_template && \
 #    curl https://sh.rustup.rs -sSf | sh -s -- -y && source $HOME/.cargo/env && \
     sudo apt update && sudo apt install -y rustc cargo && cd ../bin && \
-    git clone https://github.com/acados/tera_renderer.git && cd tera_renderer && $HOME/.cargo/bin/cargo build --verbose --release && \
+    git clone https://github.com/acados/tera_renderer.git && cd tera_renderer && cargo build --verbose --release && \
     cp target/release/t_renderer ${ACADOS_ROOT}/bin
 
 #################################################### Setup YDLidar
@@ -327,7 +340,7 @@ RUN export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/targets/aarch64-linu
 #    mv realsense-ros-${REALSENSE_ROS_VERSION}/ realsense-ros && \
 #    rm ${REALSENSE_ROS_VERSION}.zip
 
-RUN cd ${BUILD_HOME}/src && git clone https://github.com/IntelRealSense/realsense-ros.git
+RUN cd ${BUILD_HOME}/src && git clone https://github.com/privvyledge/realsense-ros.git
 
 #################################################### Setup RTAB-Map (which also publishes odometry from laser_scan)
 RUN cd "$BUILD_HOME/src" && git clone https://github.com/introlab/rtabmap.git && git clone https://github.com/introlab/rtabmap_ros.git -b ${ROS_DISTRO}-devel
@@ -341,6 +354,54 @@ RUN cd "$BUILD_HOME/src" && git clone https://github.com/introlab/rtabmap.git &&
 RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
     ros-${ROS_DISTRO}-ros2bag ros-${ROS_DISTRO}-rosbag2* && \
     sudo rm -rf /var/lib/apt/lists/*
+
+#-----------------------------------------------
+# Install/build Open3D (https://www.open3d.org/docs/release/arm.html). Doesn't work in dusty-nv container but works in Nvidia Isaac ROS container.
+# To build, see https://www.open3d.org/docs/release/arm.html#building-open3d-python-wheel-with-docker
+#-----------------------------------------------
+#RUN python3 -m pip install open3d
+
+#-----------------------------------------------
+# Install Extra dependencies, e.g tensorrt-cmake, cudnn-cmake,
+#-----------------------------------------------
+#RUN sudo apt update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+#    ros-${ROS_DISTRO}-cudnn-cmake-module ros-${ROS_DISTRO}-tensorrt-cmake-module && \
+#    ros-${ROS_DISTRO}-ackermann-msgs ros-${ROS_DISTRO}-joy && \
+# #   libpcl-dev ros-${ROS_DISTRO}-perception-pcl ros-${ROS_DISTRO}-pcl-msgs  ros-${ROS_DISTRO}-pcl-conversions && \
+#    sudo rm -rf /var/lib/apt/lists/*
+
+#--------------------------------------------
+# Compile/build PCL ROS. Todo: use one RUN command instead
+#--------------------------------------------
+# (optional) compile/build vtk
+RUN sudo apt update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+    freeglut3 freeglut3-dev && \
+    cd /sdks/ && wget https://www.vtk.org/files/release/9.3/VTK-9.3.0.tar.gz && tar -zxvf VTK-9.3.0.tar.gz && VTK-9.3.0.tar.gz && \
+    cd VTK-9.3.0 && mkdir build && cd build && \
+    cmake \
+        -DCMAKE_INSTALL_PREFIX=/usr/local \
+        -DCMAKE_INSTALL_RPATH=/usr/local/lib \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DVTK_QT_VERSION=5 \
+        -DVTK_Group_Qt=ON \
+        -DVTK_WHEEL_BUILD=ON \
+        -DVTK_PYTHON_VERSION=3 \
+        -DVTK_WRAP_PYTHON=ON -DVTK_PYTHON_OPTIONAL_LINK=ON \
+        -DPYTHON_EXECUTABLE=/usr/bin/python3 \
+        -DVTK_USE_SYSTEM_LIBRARIES=ON \
+        -DVTK_USE_CUDA=ON \
+    .. && make -j5 && sudo make install && python3 setup.py bdist_wheel && sudo ldconfig
+
+# compile/build pcl. Valid EIGEN_INSTALL_DIR are /usr/include, /usr/local/include or for Isaac ROS docker (/workspaces/isaac_ros-dev/install/nvblox/include/)
+RUN cd /sdks && wget https://github.com/PointCloudLibrary/pcl/archive/refs/tags/pcl-1.12.1.tar.gz && tar xvf pcl-1.12.1.tar.gz && \
+    cd pcl-pcl-1.12.1 && \
+    mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release .. && make -j5 && sudo make install && \
+    export EIGEN_INSTALL_DIR="/usr/include" && \
+    sudo ln -sf ${EIGEN_INSTALL_DIR}/eigen3/Eigen ${EIGEN_INSTALL_DIR}/Eigen && \
+    sudo ln -sf ${EIGEN_INSTALL_DIR}/eigen3/unsupported ${EIGEN_INSTALL_DIR}/unsupported
+
+# pull perception pcl
+RUN cd ${BUILD_HOME}/src && git clone https://github.com/ros-perception/perception_pcl.git -b ros2
 
 
 ##--------------------------------
@@ -372,9 +433,9 @@ RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install
 #    echo 'deb https://isaac.download.nvidia.com/isaac-ros/ubuntu/main focal main' | tee -a /etc/apt/sources.list
 #
 ## Add Nvidia Isaac dependencies to Rosdep
-#RUN curl -o /etc/ros/rosdep/sources.list.d/nvidia-isaac.yaml https://isaac.download.nvidia.com/isaac-ros/extra_rosdeps.yaml \
-#    && echo "yaml file:///etc/ros/rosdep/sources.list.d/nvidia-isaac.yaml" | tee /etc/ros/rosdep/sources.list.d/00-nvidia-isaac.list
-#
+RUN curl -o /etc/ros/rosdep/sources.list.d/nvidia-isaac.yaml https://isaac.download.nvidia.com/isaac-ros/extra_rosdeps.yaml \
+    && echo "yaml file:///etc/ros/rosdep/sources.list.d/nvidia-isaac.yaml" | tee /etc/ros/rosdep/sources.list.d/00-nvidia-isaac.list
+
 #RUN cd ${BUILD_HOME}/src && git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_common.git
 
 #--------------------------------
@@ -385,13 +446,29 @@ RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install
 # Silence setup.py and easy_install deprecation warnings caused by colcon and setuptools (https://github.com/colcon/colcon-core/issues/454#issuecomment-1142649390)
 ENV PYTHONWARNINGS=ignore:::setuptools.command.install,ignore:::setuptools.command.easy_install,ignore:::pkg_resources
 
+# Update rosdep with Nvidia's packages
+RUN mkdir -p /etc/ros/rosdep/sources.list.d/ \
+    && curl -o /etc/ros/rosdep/sources.list.d/nvidia-isaac.yaml https://isaac.download.nvidia.com/isaac-ros/extra_rosdeps.yaml \
+    && echo "yaml file:///etc/ros/rosdep/sources.list.d/nvidia-isaac.yaml" | tee /etc/ros/rosdep/sources.list.d/00-nvidia-isaac.list \
+    && rosdep update
+
+########### Temporary fix for spatio_temporal_voxel_layer. Todo: remove
+RUN cd ${BUILD_HOME}/src/spatio_temporal_voxel_layer && git checkout 6ade4fe4164576d4356ca92b1cd258c71930b1f4
+
 WORKDIR $BUILD_HOME
 #ARG MAKEFLAGS="-j4 -l4"
 RUN sudo apt update && \
     rosdep update && \
-    source /opt/ros/${ROS_DISTRO}/setup.bash && \
-    rosdep install --from-paths src --ignore-src -r -y --skip-keys "rf2o_laser_odometry librealsense2 realsense2_camera libopencv-dev  libopencv-contrib-dev libopencv-imgproc-dev python-opencv python3-opencv" && \
-    colcon build --symlink-install --event-handlers console_direct+ --base-paths src --cmake-args '  -Wno-dev' ' --no-warn-unused-cli' ' -DBUILD_ACCELERATE_GPU_WITH_GLSL=ON' ' -DCMAKE_BUILD_TYPE=Release' ' -DCMAKE_EXPORT_COMPILE_COMMANDS=ON' ' -DCMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs' ' -DCMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined"  -DDOWNLOAD_ARTIFACTS=ON'
+    source /opt/ros/${ROS_DISTRO}/setup.bash && source /opt/ros/${ROS_DISTRO}/install/setup.bash && \
+    rosdep install --from-paths src --ignore-src -r -y --os=ubuntu:focal --skip-keys "cmake_modules pacmod3_msgs librealsense2 realsense2_camera libopencv-dev  libopencv-contrib-dev libopencv-imgproc-dev python-opencv python3-opencv libpcl-all-dev libpcl-all pcl_conversions pcl_ros perception_pcl libpcl-common libpcl-io libpcl-features libpcl-segmentation libpcl-surface python3-open3d" && \
+    rosdep install --from-paths src --ignore-src -r -y --os=ubuntu:jammy --rosdistro=humble --skip-keys "cmake_modules pacmod3_msgs librealsense2 realsense2_camera libopencv-dev  libopencv-contrib-dev libopencv-imgproc-dev python-opencv python3-opencv libpcl-all-dev libpcl-all pcl_conversions pcl_ros perception_pcl libpcl-common libpcl-io libpcl-features libpcl-segmentation libpcl-surface python3-open3d"
+
+#ARG MAKEFLAGS="-j5 -l5"
+RUN sudo apt-get purge --auto-remove -y libpcl-dev ros-humble-perception-pcl ros-humble-pcl-conversions # && sudo apt install -y libpcl-dev ros-humble-perception-pcl ros-humble-pcl-conversions
+RUN touch ${BUILD_HOME}/src/autoware.repos/COLCON_IGNORE
+RUN source /opt/ros/${ROS_DISTRO}/install/setup.bash && source /opt/ros/${ROS_DISTRO}/setup.bash && colcon build --symlink-install --event-handlers console_direct+ --base-paths src --cmake-args '  -Wno-dev' ' --no-warn-unused-cli' ' -DBUILD_ACCELERATE_GPU_WITH_GLSL=ON' ' -DCMAKE_BUILD_TYPE=Release' ' -DCMAKE_EXPORT_COMPILE_COMMANDS=ON' ' -DCMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs' ' -DCMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined"  -DDOWNLOAD_ARTIFACTS=ON'
+RUN rm touch ${BUILD_HOME}/src/autoware.repos/COLCON_IGNORE
+RUN source /opt/ros/${ROS_DISTRO}/install/setup.bash && source /opt/ros/${ROS_DISTRO}/setup.bash && colcon build --symlink-install --event-handlers console_direct+ --base-paths src --cmake-args '  -Wno-dev' ' --no-warn-unused-cli' ' -DBUILD_ACCELERATE_GPU_WITH_GLSL=ON' ' -DCMAKE_BUILD_TYPE=Release' ' -DCMAKE_EXPORT_COMPILE_COMMANDS=ON' ' -DCMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs' ' -DCMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined"  -DDOWNLOAD_ARTIFACTS=ON'
 
 #-----------------------------
 # Setup microros agent, i.e create_agent_ws, then build_agent. Modified to skip rosdep keys and specify colcon build arguments
@@ -405,7 +482,6 @@ RUN bash -c 'source install/setup.bash; \
 # Todo: run the following. See (https://autowarefoundation.github.io/autoware-documentation/release-v1.0_beta/how-to-guides/others/advanced-usage-of-colcon/#changing-the-default-configuration-of-colcon)
 #--------------------------------
 
-
 #-----------------------------
 # Setup environment variables
 #-----------------------------
@@ -413,6 +489,7 @@ RUN bash -c 'source install/setup.bash; \
 # Todo: add autoware environment variables like vehicle_id
 RUN echo 'alias build="colcon build --symlink-install  --event-handlers console_direct+"' >> ~/.bashrc && \
     echo 'source /opt/ros/${ROS_DISTRO}/setup.bash' >> ~/.bashrc && \
+    echo 'source /opt/ros/${ROS_DISTRO}/install/setup.bash' >> ~/.bashrc && \
     echo "source ${BUILD_HOME}/install/setup.bash" >> ~/.bashrc && \
     echo "export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp" >> ~/.bashrc && \
     echo "export CYCLONEDDS_URI=file://$BUILD_HOME/src/autoware.f1tenth/cyclone_dds/cyclonedds_config.xml" >> ~/.bashrc && \
