@@ -335,6 +335,10 @@ RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install
     ros-${ROS_DISTRO}-ros2bag ros-${ROS_DISTRO}-rosbag2* && \
     sudo rm -rf /var/lib/apt/lists/*
 
+#----------------------------------------------
+# Setup Dualshock 4 ROS image. Make sure to setup the drivers on the host
+#----------------------------------------------
+RUN cd ${BUILD_HOME}/src && git clone https://github.com/naoki-mizuno/ds4_driver.git
 
 ##--------------------------------
 ## Setup NVIDIA Isaac packages
