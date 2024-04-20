@@ -10,7 +10,7 @@ $SUDO apt update && $SUDO apt upgrade -y # could skip this step if it breaks the
 # Purge or hold opencv so it is not overwritten by ros or cause installation issues
 # Todo: has issues due to Opencv. Try: https://github.com/dusty-nv/jetson-containers/issues/158#issuecomment-1292770467
 # $SUDO apt-mark hold *opencv*  # Doesn't work. do this before setting up ROS packages so ros packages with the name "opencv" are not held or use a better regex.
-$SUDO apt purge -y *opencv*  # todo: find a fix for this
+#$SUDO apt purge -y *opencv*  # todo: find a fix for this
 
 # Setup locale
 $SUDO apt update && $SUDO apt install -y locales

@@ -111,6 +111,7 @@ build_images() {
     echo "Targets: ${targets[*]}"
 
     set -x
+    # If there is an ${SSH_AUTH_SOCK} error, replace *.ssh=default with *.ssh=${SSH_AUTH_SOCK}
     docker buildx bake --load --progress=plain -f "$SCRIPT_DIR/autoware-openadk/docker-bake.hcl" \
         --set "*.context=$WORKSPACE_ROOT" \
         --set "*.ssh=default" \

@@ -13,7 +13,7 @@
 
 ################ Install dependencies
 sudo apt-get -y update
-sudo apt-get -y install git ccache build-essential git-lfs ssh  wget  cmake curl gosu \
+sudo apt-get -y install git ccache build-essential git-lfs ssh  wget curl gosu \
   gnupg \
   vim \
   unzip \

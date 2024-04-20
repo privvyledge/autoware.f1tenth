@@ -11,10 +11,13 @@
 #FROM privvyledge/r36.2.0-ros-humble-ml:latest
 #FROM nvcr.io/nvidia/l4t-ml:r36.2.0-py3
 #FROM dustynv/ros:humble-desktop-pytorch-l4t-r35.4.1
-#FROM isaac_ros_dev-aarch64:latest
-FROM privvyledge/jp5.1.2:humble-with-realsense
+#FROM privvyledge/jp5.1.2:humble-with-realsense
 
 # Todo: uninstall libpcl-dev. Install PCL at the top. Set RMW as cyclone. Setup Nova carter docker stuff without pcl. This dockerfile should be much smaller since most Nav2 packages are already installed.
+# nvidia isaac ros + aarch64 + ros2 humble + realsense + nova carter
+#FROM isaac_ros_dev-aarch64:latest
+
+FROM privvyledge/jp5.1.2:humble
 
 # Set up the shell
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
@@ -37,12 +40,12 @@ ARG USER_GID=$USER_UID
 #        echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/$USERNAME && \
 #        chmod 0440 /etc/sudoers.d/$USERNAME
 
-RUN groupadd --gid $USER_GID $USERNAME && \
-        useradd --uid $USER_UID --gid $USER_GID -m $USERNAME && \
-        echo "$USERNAME:$USERNAME" | chpasswd && \
-        usermod --shell /bin/bash $USERNAME && \
-        usermod -aG sudo,video $USERNAME && \
-        usermod  --uid $USER_UID $USERNAME
+#RUN groupadd --gid $USER_GID $USERNAME && \
+#        useradd --uid $USER_UID --gid $USER_GID -m $USERNAME && \
+#        echo "$USERNAME:$USERNAME" | chpasswd && \
+#        usermod --shell /bin/bash $USERNAME && \
+#        usermod -aG sudo,video $USERNAME && \
+#        usermod  --uid $USER_UID $USERNAME
 
 # Setup env and shell
 ENV LOGNAME root
@@ -57,7 +60,6 @@ ARG ROS_DISTRO="humble"
 ENV ROS_DISTRO=${ROS_DISTRO}
 ENV ROS_ROOT=/opt/ros/${ROS_DISTRO}
 ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
-
 
 ENV NVIDIA_DRIVER_CAPABILITIES all
 ENV NVIDIA_VISIBLE_DEVICES all  # causes graphical failures
@@ -90,7 +92,7 @@ RUN sudo apt-get update -y && DEBIAN_FRONTEND="noninteractive" sudo apt-get inst
     ca-certificates libegl1 \
     lsb-release \
     gnupg2 \
-    cmake \
+#    cmake \
     pkg-config \
     swig \
     g++ \
@@ -107,6 +109,7 @@ RUN sudo apt-get update -y && DEBIAN_FRONTEND="noninteractive" sudo apt-get inst
     python3-yaml \
     python3-tk \
     python3-pyqt5 \
+    python3-bloom \
 #    libopencv-dev \
     libssl-dev \
     libusb-1.0-0-dev \
@@ -114,8 +117,29 @@ RUN sudo apt-get update -y && DEBIAN_FRONTEND="noninteractive" sudo apt-get inst
     libglfw3-dev \
     libgl1-mesa-dev \
     libglu1-mesa-dev \
-    qtcreator && \
+    libgoogle-glog-dev \
+    qtcreator \
+    libgstreamer1.0-0 \
+    gstreamer1.0-plugins-base \
+    gstreamer1.0-plugins-good \
+    gstreamer1.0-plugins-bad \
+    gstreamer1.0-plugins-ugly \
+    gstreamer1.0-libav \
+    gstreamer1.0-tools \
+    gstreamer1.0-x \
+    gstreamer1.0-alsa \
+    gstreamer1.0-gl \
+    gstreamer1.0-gtk3 \
+    gstreamer1.0-qt5 \
+    gstreamer1.0-pulseaudio \
+    libglib2.0-dev \
+    libgstrtspserver-1.0-dev \
+    gstreamer1.0-rtsp && \
     sudo rm -rf /var/lib/apt/lists/*
+
+# Set up "user" and environment variables. todo
+#USER ${USERNAME}
+USER root
 
 # Install Python Packages. Todo: add ultralytics, YOLOv8, YOLOv4, etc. dependencies
 RUN python3 -m pip install do-mpc casadi
@@ -124,42 +148,42 @@ RUN python3 -m pip install do-mpc casadi
 ENV BUILD_HOME=/f1tenth_ws
 ARG BUILD_HOME=$BUILD_HOME
 
-RUN mkdir -p "$BUILD_HOME/src"
+RUN sudo mkdir -p "$BUILD_HOME/src" && sudo mkdir -p /sdks
 
 WORKDIR $BUILD_HOME/src
 
 ################################################### remove PCL and preinstalled PCL packages
-RUN sudo apt-get remove -y libpcl-dev ros-${ROS_DISTRO}-perception-pcl ros-${ROS_DISTRO}-pcl-ros ros-${ROS_DISTRO}-pcl-conversions
+#RUN sudo apt-get remove -y libpcl-dev ros-${ROS_DISTRO}-pcl-conversions
 
-#--------------------------------------------
-# Compile/build PCL ROS. Todo: use one RUN command instead
-#--------------------------------------------
+##--------------------------------------------
+## Compile/build PCL ROS. Todo: use one RUN command instead
+##--------------------------------------------
 # (optional) compile/build vtk
-RUN sudo apt update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
-    freeglut3 freeglut3-dev && \
-    cd /sdks/ && wget https://www.vtk.org/files/release/9.3/VTK-9.3.0.tar.gz && tar -zxvf VTK-9.3.0.tar.gz && VTK-9.3.0.tar.gz && \
-    cd VTK-9.3.0 && mkdir build && cd build && \
-    cmake \
-        -DCMAKE_INSTALL_PREFIX=/usr/local \
-        -DCMAKE_INSTALL_RPATH=/usr/local/lib \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DVTK_QT_VERSION=5 \
-        -DVTK_Group_Qt=ON \
-        -DVTK_WHEEL_BUILD=ON \
-        -DVTK_PYTHON_VERSION=3 \
-        -DVTK_WRAP_PYTHON=ON -DVTK_PYTHON_OPTIONAL_LINK=ON \
-        -DPYTHON_EXECUTABLE=/usr/bin/python3 \
-        -DVTK_USE_SYSTEM_LIBRARIES=ON \
-        -DVTK_USE_CUDA=ON \
-    .. && make -j5 && sudo make install && python3 setup.py bdist_wheel && sudo ldconfig
+#RUN sudo apt update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+#    freeglut3 freeglut3-dev && \
+#    cd /sdks/ && wget https://www.vtk.org/files/release/9.3/VTK-9.3.0.tar.gz && tar -zxvf VTK-9.3.0.tar.gz && VTK-9.3.0.tar.gz && \
+#    cd VTK-9.3.0 && mkdir build && cd build && \
+#    cmake \
+#        -DCMAKE_INSTALL_PREFIX=/usr/local \
+#        -DCMAKE_INSTALL_RPATH=/usr/local/lib \
+#        -DCMAKE_BUILD_TYPE=Release \
+#        -DVTK_QT_VERSION=5 \
+#        -DVTK_Group_Qt=ON \
+#        -DVTK_WHEEL_BUILD=ON \
+#        -DVTK_PYTHON_VERSION=3 \
+#        -DVTK_WRAP_PYTHON=ON -DVTK_PYTHON_OPTIONAL_LINK=ON \
+#        -DPYTHON_EXECUTABLE=/usr/bin/python3 \
+#        -DVTK_USE_SYSTEM_LIBRARIES=ON \
+#        -DVTK_USE_CUDA=ON \
+#    .. && make -j5 && sudo make install && python3 setup.py bdist_wheel && sudo ldconfig
 
-# compile/build pcl. Valid EIGEN_INSTALL_DIR are /usr/include, /usr/local/include or for Isaac ROS docker (/workspaces/isaac_ros-dev/install/nvblox/include/)
-RUN cd /sdks && wget https://github.com/PointCloudLibrary/pcl/archive/refs/tags/pcl-1.12.1.tar.gz && tar xvf pcl-1.12.1.tar.gz && \
-    cd pcl-pcl-1.12.1 && \
-    mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release .. && make -j5 && sudo make install && \
-    export EIGEN_INSTALL_DIR="/usr/include" && \
-    sudo ln -sf ${EIGEN_INSTALL_DIR}/eigen3/Eigen ${EIGEN_INSTALL_DIR}/Eigen && \
-    sudo ln -sf ${EIGEN_INSTALL_DIR}/eigen3/unsupported ${EIGEN_INSTALL_DIR}/unsupported
+## compile/build pcl. Valid EIGEN_INSTALL_DIR are /usr/include, /usr/local/include or for Isaac ROS docker (/workspaces/isaac_ros-dev/install/nvblox/include/)
+#RUN cd /sdks && wget https://github.com/PointCloudLibrary/pcl/archive/refs/tags/pcl-1.12.1.tar.gz && tar xvf pcl-1.12.1.tar.gz && \
+#    cd pcl-pcl-1.12.1 && \
+#    mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release .. && make -j5 && sudo make install && \
+#    export EIGEN_INSTALL_DIR="/usr/include" && \
+#    sudo ln -sf ${EIGEN_INSTALL_DIR}/eigen3/Eigen ${EIGEN_INSTALL_DIR}/Eigen && \
+#    sudo ln -sf ${EIGEN_INSTALL_DIR}/eigen3/unsupported ${EIGEN_INSTALL_DIR}/unsupported
 
 # pull perception pcl
 RUN cd ${BUILD_HOME}/src && git clone https://github.com/ros-perception/perception_pcl.git -b ros2
@@ -198,17 +222,6 @@ RUN cd "$BUILD_HOME/src" && rm -rf f1tenth_system && git clone https://github.co
 ##    cd "$BUILD_HOME/src" && git clone --recursive https://github.com/ros-planning/navigation2.git -b ${ROS_DISTRO} && \
 ##    sudo rm -rf /var/lib/apt/lists/*
 
-#-------------------------------------------------
-# Setup Spatio Temporal Voxel Layer (STVL) and other voxel packages for 3D occupancy representation.
-#-------------------------------------------------
-#RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
-#    ros-${ROS_DISTRO}-spatio-temporal-voxel-layer ros-${ROS_DISTRO}-nonpersistent-voxel-layer
-
-RUN cd "${BUILD_HOME}/src" && \
-    git clone -b ros2 https://github.com/SteveMacenski/spatio_temporal_voxel_layer.git && \
-    git clone -b ros2 https://github.com/SteveMacenski/nonpersistent_voxel_layer.git && \
-    cd spatio_temporal_voxel_layer && git checkout 6ade4fe4164576d4356ca92b1cd258c71930b1f4
-
 
 ##################################################### (Optional) Setup SLAM toolbox. Use galactic and above (or noetic) to get pose
 #RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
@@ -245,8 +258,7 @@ RUN cd "$BUILD_HOME/src" && sudo apt-get update && DEBIAN_FRONTEND="noninteracti
 RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
     ros-${ROS_DISTRO}-depthimage-to-laserscan  && \
     sudo rm -rf /var/lib/apt/lists/*
-# RUN #cd "$BUILD_HOME/src" && git clone https://github.com/ros-perception/depthimage_to_laserscan.git -b ros2 && \
-#    cd laser_filters && rosdep install -q -y -r --from-paths src --ignore-src
+# RUN #cd "$BUILD_HOME/src" && git clone https://github.com/ros-perception/depthimage_to_laserscan.git -b ros2
 
 #################################################### Setup laser odometry packages. Todo: setup for humble
 #RUN cd "$BUILD_HOME/src" && git clone https://github.com/Adlink-ROS/rf2o_laser_odometry.git && \
@@ -320,28 +332,28 @@ RUN cd "$BUILD_HOME/src" && git clone https://github.com/YDLIDAR/ydlidar_ros2_dr
 #    sudo rm -rf /var/lib/apt/lists/*
 
 # todo: set envs above instead of exporting
-## branches R/2542, master, development, etc. Not necessary since the base package used already includes realsense
-#ARG LIBREALSENSE_BRANCH="master"
-#RUN export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/targets/aarch64-linux/lib/stubs:/opt/ros/${ROS_DISTRO}/install/lib && \
-#    export CUDACXX=/usr/local/cuda/bin/nvcc && export PATH=${PATH}:/usr/local/cuda/bin && \
-#    cd /sdks && git clone --branch ${LIBREALSENSE_BRANCH} --depth=1 https://github.com/IntelRealSense/librealsense && \
-#    cd librealsense && \
-#    mkdir build && \
-#    cd build && \
-#    cmake \
-#       -DBUILD_EXAMPLES=true \
-#	   -DFORCE_RSUSB_BACKEND=true \
-#	   -DBUILD_WITH_CUDA=true \
-#	   -DCMAKE_BUILD_TYPE=release \
-#	   -DBUILD_PYTHON_BINDINGS=bool:true \
-#	   -DPYTHON_EXECUTABLE=/usr/bin/python3 \
-#       -DBUILD_GRAPHICAL_EXAMPLES=true \
-#	   -DPYTHON_INSTALL_DIR=$(python3 -c 'import sys; print(f"/usr/lib/python{sys.version_info.major}.{sys.version_info.minor}/dist-packages")') \
-#	   ../ && \
-#    make -j$(($(nproc)-1)) && \
-#    sudo make install
-##    cd ../ && \
-##    sudo cp ./config/99-realsense-libusb.rules /etc/udev/rules.d/
+# branches R/2542, master, development, etc. Not necessary since the base package used already includes realsense
+ARG LIBREALSENSE_BRANCH="master"
+RUN export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/targets/aarch64-linux/lib/stubs:/opt/ros/${ROS_DISTRO}/install/lib && \
+    export CUDACXX=/usr/local/cuda/bin/nvcc && export PATH=${PATH}:/usr/local/cuda/bin && \
+    cd /sdks && git clone --branch ${LIBREALSENSE_BRANCH} --depth=1 https://github.com/IntelRealSense/librealsense && \
+    cd librealsense && \
+    mkdir build && \
+    cd build && \
+    cmake \
+       -DBUILD_EXAMPLES=true \
+	   -DFORCE_RSUSB_BACKEND=true \
+	   -DBUILD_WITH_CUDA=true \
+	   -DCMAKE_BUILD_TYPE=release \
+	   -DBUILD_PYTHON_BINDINGS=bool:true \
+	   -DPYTHON_EXECUTABLE=/usr/bin/python3 \
+       -DBUILD_GRAPHICAL_EXAMPLES=true \
+	   -DPYTHON_INSTALL_DIR=$(python3 -c 'import sys; print(f"/usr/lib/python{sys.version_info.major}.{sys.version_info.minor}/dist-packages")') \
+	   ../ && \
+    make -j$(($(nproc)-1)) && \
+    sudo make install
+#    cd ../ && \
+#    sudo cp ./config/99-realsense-libusb.rules /etc/udev/rules.d/
 
 #ARG LIBREALSENSE_VERSION="2.54.2"
 #RUN export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/targets/aarch64-linux/lib/stubs:/opt/ros/${ROS_DISTRO}/install/lib && \
@@ -370,7 +382,7 @@ RUN cd "$BUILD_HOME/src" && git clone https://github.com/YDLIDAR/ydlidar_ros2_dr
 # Install realsense ros
 # RUN sudo apt install -y --no-install-recommends ros-${ROS_DISTRO}-realsense2-*
 #ARG REALSENSE_ROS_VERSION=4.54.1
-#RUN cd ${BUILD_HOME}/src && wget https://github.com/IntelRealSense/realsense-ros/archive/refs/tags/${REALSENSE_ROS_VERSION}.zip && \
+#RUN cd ${BUILD_HOME}/src && wget https://github.com/privvyledge/realsense-ros/archive/refs/tags/${REALSENSE_ROS_VERSION}.zip && \
 #    unzip ${REALSENSE_ROS_VERSION}.zip && \
 #    mv realsense-ros-${REALSENSE_ROS_VERSION}/ realsense-ros && \
 #    rm ${REALSENSE_ROS_VERSION}.zip
@@ -390,6 +402,51 @@ RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install
     ros-${ROS_DISTRO}-ros2bag ros-${ROS_DISTRO}-rosbag2* && \
     sudo rm -rf /var/lib/apt/lists/*
 
+#----------------------------------------------
+# Setup Dualshock 4 ROS image. Make sure to setup the drivers on the host
+#----------------------------------------------
+RUN cd /sdks/ && git clone https://github.com/naoki-mizuno/ds4drv --branch devel \
+    && cd ds4drv \
+    && python3 setup.py install
+RUN cd ${BUILD_HOME}/src && git clone https://github.com/naoki-mizuno/ds4_driver.git
+
+#----------------------------------------------
+# YOLOv8 nodes. todo: verify if downloading Arial.ttf* is necessary
+# Note that downgrading numpy might cause issues with other python packages, i.e onnxruntime-gpu and tensorflow as they require higher numpy versions. Could use a pytorch only base image instead.
+
+# To export to tensorrt
+# Using the command line:
+# Using python: python3 -c "from ultralytics import YOLO;model = YOLO('yolov8s.pt');model.export(format='engine', half=True, simplify=True)"
+
+# YOLOv8 ROS Usage. todo: put in launch files:
+# images only
+# ros2 launch ultralytics_ros tracker.launch.xml debug:=false input_topic:=/camera/camera/color/image_raw yolo_model:=yolov8m-seg.pt
+# ros2 launch yolov8_bringup yolov8.launch.py model:=yolov8m-seg.pt input_image_topic:=/camera/camera/color/image_raw # or yolov9
+# 3D
+# ros2 launch ultralytics_ros tracker_with_cloud.launch.xml debug:=false input_topic:=/camera/camera/color/image_raw yolo_model:=yolov8m-seg.pt camera_info_topic:=/camera/camera/color/camera_info lidar_topic:=/camera/camera/depth/color/points yolo_result_topic:=/yolo/realsense/rgb yolo_3d_result_topic:=/yolo/realsense_3d_result cluster_tolerance:=0.3  voxel_leaf_size:=0.1 min_cluster_size:=100 max_cluster_size:=10000
+# ros2 launch yolov8_bringup yolov8_3d.launch.py model:=yolov8m-seg.pt input_image_topic:=/camera/camera/color/image_raw input_depth_topic:=/camera/camera/depth/image_rect_raw input_depth_info_topic:=/camera/camera/depth/camera_info target_frame:=camera_link
+#----------------------------------------------
+# Install ultralytics
+RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+    git-lfs gcc git zip curl htop libgl1 libglib2.0-0 libpython3-dev gnupg g++ libusb-1.0-0 && \
+    mkdir -p /root/.config/Ultralytics && cd /root/.config/Ultralytics && wget https://github.com/ultralytics/assets/releases/download/v0.0.0/Arial.ttf && wget https://github.com/ultralytics/assets/releases/download/v0.0.0/Arial.Unicode.ttf && \
+    cd /sdks && git clone https://github.com/ultralytics/ultralytics && \
+    cd ultralytics &&  grep -v "opencv-python" pyproject.toml > temp.toml && mv temp.toml pyproject.toml && \
+    python3 -m pip install --upgrade pip wheel && \
+    python3 -m pip install lap==0.4.0 numpy==1.23.5 typing-extensions>=4.4.0 Bottleneck==1.3.4 onnxsim>=0.4.33 && \
+    cd /sdks/ultralytics/ && pip install --no-cache -e . && \
+#    export OMP_NUM_THREADS=1 && \
+    cd ${BUILD_HOME}/src && GIT_LFS_SKIP_SMUDGE=1 git clone -b humble-devel https://github.com/Alpaca-zip/ultralytics_ros.git && \
+    git clone https://github.com/mgonzs13/yolov8_ros.git && \
+    sudo rm -rf /var/lib/apt/lists/* \
+
+#----------------------------------------------
+# Install Apriltag
+#----------------------------------------------
+RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+    ros-${ROS_DISTRO}-apriltag && \
+    sudo rm -rf /var/lib/apt/lists/* \
+
 #-----------------------------------------------
 # Install/build Open3D (https://www.open3d.org/docs/release/arm.html). Doesn't work in dusty-nv container but works in Nvidia Isaac ROS container.
 # To build, see https://www.open3d.org/docs/release/arm.html#building-open3d-python-wheel-with-docker
@@ -406,45 +463,88 @@ RUN python3 -m pip install open3d
 #    sudo rm -rf /var/lib/apt/lists/*
 
 
-##--------------------------------
-## Setup NVIDIA Isaac packages. No need since the base package is an Isaac ROS docker child image
-##--------------------------------
+#--------------------------------
+# Setup NVIDIA Isaac packages. No need since the base package is an Isaac ROS docker child image
+#--------------------------------
+RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+    python3-distutils \
+    bc \
+    libboost-all-dev \
+    libboost-dev \
+    libpcl-dev \
+    libode-dev \
+    libgeographic-dev \
+    lcov \
+    python3-zmq \
+    libxaw7-dev \
+    libgraphicsmagick++1-dev \
+    graphicsmagick-libmagick-dev-compat \
+    libceres-dev \
+    libsuitesparse-dev \
+    libncurses5-dev \
+    libassimp-dev \
+    libyaml-cpp-dev \
+    libpcap-dev \
+    && sudo rm -rf /var/lib/apt/lists/* \
+    && sudo apt-get clean
+
+#-------------------------------------------------
+# Setup Spatio Temporal Voxel Layer (STVL) and other voxel packages for 3D occupancy representation.
+#-------------------------------------------------
 #RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
-#    python3-distutils \
-#    libboost-all-dev \
-#    libboost-dev \
-#    libpcl-dev \
-#    libode-dev \
-#    lcov \
-#    python3-zmq \
-#    libxaw7-dev \
-#    libgraphicsmagick++1-dev \
-#    graphicsmagick-libmagick-dev-compat \
-#    libceres-dev \
-#    libsuitesparse-dev \
-#    libncurses5-dev \
-#    libassimp-dev \
-#    libyaml-cpp-dev \
-#    libpcap-dev \
-#    && sudo rm -rf /var/lib/apt/lists/* \
-#    && sudo apt-get clean
-#
-## Add Isaac apt repository
-#RUN wget -qO - https://isaac.download.nvidia.com/isaac-ros/repos.key | apt-key add - && \
-#    grep -qxF 'deb https://isaac.download.nvidia.com/isaac-ros/ubuntu/main focal main' /etc/apt/sources.list || \
-#    echo 'deb https://isaac.download.nvidia.com/isaac-ros/ubuntu/main focal main' | tee -a /etc/apt/sources.list
-#
-### Add Nvidia Isaac dependencies to Rosdep
-#RUN curl -o /etc/ros/rosdep/sources.list.d/nvidia-isaac.yaml https://isaac.download.nvidia.com/isaac-ros/extra_rosdeps.yaml \
-#    && echo "yaml file:///etc/ros/rosdep/sources.list.d/nvidia-isaac.yaml" | tee /etc/ros/rosdep/sources.list.d/00-nvidia-isaac.list
+#    ros-${ROS_DISTRO}-spatio-temporal-voxel-layer ros-${ROS_DISTRO}-nonpersistent-voxel-layer
+# Install spatio_temporal_voxel_layer dependencies
+RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+	libopenvdb-dev \
+	libopenvdb6.2 \
+	libopenexr-dev \
+    ros-humble-nav2-costmap-2d \
+	ros-humble-pcl-conversions \
+    ros-humble-twist-mux \
+    ros-humble-joy-linux \
+    ros-humble-teleop-twist-joy \
+    ros-humble-nav2* \
+    ros-humble-nav2-bringup \
+    ros-humble-geographic-msgs \
+    && sudo rm -rf /var/lib/apt/lists/* \
+    && sudo apt-get clean
+
+RUN cd "${BUILD_HOME}/src" && \
+    git clone -b ros2 https://github.com/SteveMacenski/nonpersistent_voxel_layer.git && \
+    sudo apt-get update && \
+#    mkdir -p ${ROS_ROOT}/src && cd ${ROS_ROOT}/src && \
+    git clone -b ros2 https://github.com/SteveMacenski/spatio_temporal_voxel_layer.git && \
+    cd spatio_temporal_voxel_layer && git checkout 6ade4fe4164576d4356ca92b1cd258c71930b1f4 && \
+    source ${ROS_ROOT}/setup.bash \
+#    && bloom-generate rosdebian && sed -i 's/nav2-costmap-2d/ros-humble-nav2-costmap-2d/g' debian/rules && fakeroot debian/rules binary \
+#    && cd ../ && sudo apt-get install -y ./*.deb && rm ./*.deb \
+    && sudo rm -rf /var/lib/apt/lists/* \
+    && sudo apt-get clean
+
+
 ## Todo: Add Nvidia Isaac ROS repositories
 #RUN cd ${BUILD_HOME}/src && git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_common.git
-RUN cd ${BUILD_HOME}/src && sudo apt-get update &&  DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
-    ros-humble-isaac-ros-common ros-humble-isaac-ros-visual-slam &&  \
-    git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_common.git && \
-    git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_visual_slam.git && \
-    git clone --recurse-submodules https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_nvblox.git && \
-    cd isaac_ros_nvblox && git lfs pull
+#RUN cd ${BUILD_HOME}/src && sudo apt-get update &&  DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+#    ros-humble-isaac-ros-common ros-humble-isaac-ros-visual-slam &&  \
+#    git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_common.git && \
+#    git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_visual_slam.git && \
+#    git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_nitros.git && \
+#    git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_nitros_bridge.git && \
+#    git clone --recurse-submodules https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_nvblox.git && \
+#    cd isaac_ros_nvblox && git lfs pull
+
+# Install and setup cyclone DDS
+RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+    ros-humble-rmw-cyclonedds-cpp ros-humble-rmw-fastrtps-cpp
+ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+
+#------------------------------------------
+# Install Autoware Dependencies not available in Ubuntu 20.04 apt
+#------------------------------------------
+# Install PACMOD3
+RUN cd ${BUILD_HOME}/src && \
+    git clone https://github.com/astuff/pacmod3.git -b ros2_master && \
+    git clone https://github.com/astuff/pacmod3_msgs.git
 
 #--------------------------------
 # Build ROS workspace
@@ -463,24 +563,28 @@ ENV PYTHONWARNINGS=ignore:::setuptools.command.install,ignore:::setuptools.comma
 
 WORKDIR $BUILD_HOME
 #ARG MAKEFLAGS="-j4 -l4"
+ARG SKIPPED_ROSDEP_KEYS="cmake_modules pacmod3_msgs  python3-open3d \
+    librealsense2 realsense2_camera libopencv-dev  libopencv-contrib-dev libopencv-imgproc-dev python-opencv python3-opencv \
+    libpcl-all-dev libpcl-all pcl_conversions pcl_ros perception_pcl  \
+    libpcl-common libpcl-io libpcl-features libpcl-segmentation libpcl-surface nvblox"
 RUN sudo apt update && \
     rosdep update && \
     source /opt/ros/${ROS_DISTRO}/setup.bash && source /opt/ros/${ROS_DISTRO}/install/setup.bash && \
-    rosdep install --from-paths src --ignore-src -r -y --os=ubuntu:focal --skip-keys "cmake_modules pacmod3_msgs librealsense2 realsense2_camera libopencv-dev  libopencv-contrib-dev libopencv-imgproc-dev python-opencv python3-opencv libpcl-all-dev libpcl-all pcl_conversions pcl_ros perception_pcl libpcl-common libpcl-io libpcl-features libpcl-segmentation libpcl-surface python3-open3d" && \
-    rosdep install --from-paths src --ignore-src -r -y --os=ubuntu:jammy --rosdistro=humble --skip-keys "cmake_modules pacmod3_msgs librealsense2 realsense2_camera libopencv-dev  libopencv-contrib-dev libopencv-imgproc-dev python-opencv python3-opencv libpcl-all-dev libpcl-all pcl_conversions pcl_ros perception_pcl libpcl-common libpcl-io libpcl-features libpcl-segmentation libpcl-surface python3-open3d"
+    rosdep install --from-paths src --ignore-src -r -y --os=ubuntu:focal --skip-keys "${SKIPPED_ROSDEP_KEYS}" && \
+    rosdep install --from-paths src --ignore-src -r -y --os=ubuntu:jammy --rosdistro=humble --skip-keys "${SKIPPED_ROSDEP_KEYS}"
 
 #ARG MAKEFLAGS="-j5 -l5"
 #RUN sudo apt-get purge --auto-remove -y libpcl-dev ros-humble-perception-pcl ros-humble-pcl-conversions # && sudo apt install -y libpcl-dev ros-humble-perception-pcl ros-humble-pcl-conversions
-RUN touch ${BUILD_HOME}/src/autoware.repos/COLCON_IGNORE
-RUN source /opt/ros/${ROS_DISTRO}/install/setup.bash && source /opt/ros/${ROS_DISTRO}/setup.bash && colcon build --symlink-install --event-handlers console_direct+ --base-paths src --cmake-args '  -Wno-dev' ' --no-warn-unused-cli' ' -DBUILD_ACCELERATE_GPU_WITH_GLSL=ON' ' -DCMAKE_BUILD_TYPE=Release' ' -DCMAKE_EXPORT_COMPILE_COMMANDS=ON' ' -DCMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs' ' -DCMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined"  -DDOWNLOAD_ARTIFACTS=ON'
-RUN rm touch ${BUILD_HOME}/src/autoware.repos/COLCON_IGNORE
+RUN touch ${BUILD_HOME}/src/autoware.f1tenth/COLCON_IGNORE
+RUN source /opt/ros/${ROS_DISTRO}/install/setup.bash && colcon build --symlink-install --event-handlers console_direct+ --base-paths src --cmake-args '  -Wno-dev' ' --no-warn-unused-cli' ' -DBUILD_ACCELERATE_GPU_WITH_GLSL=ON' ' -DCMAKE_BUILD_TYPE=Release' ' -DCMAKE_EXPORT_COMPILE_COMMANDS=ON' ' -DCMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs' ' -DCMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined"  -DDOWNLOAD_ARTIFACTS=ON'
+RUN rm touch ${BUILD_HOME}/src/autoware.f1tenth/COLCON_IGNORE
 RUN source /opt/ros/${ROS_DISTRO}/install/setup.bash && source /opt/ros/${ROS_DISTRO}/setup.bash && colcon build --symlink-install --event-handlers console_direct+ --base-paths src --cmake-args '  -Wno-dev' ' --no-warn-unused-cli' ' -DBUILD_ACCELERATE_GPU_WITH_GLSL=ON' ' -DCMAKE_BUILD_TYPE=Release' ' -DCMAKE_EXPORT_COMPILE_COMMANDS=ON' ' -DCMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs' ' -DCMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined"  -DDOWNLOAD_ARTIFACTS=ON'
 
 #-----------------------------
 # Setup microros agent, i.e create_agent_ws, then build_agent. Modified to skip rosdep keys and specify colcon build arguments
 #-----------------------------
 RUN bash -c 'source install/setup.bash; \
-             EXTERNAL_SKIP="lio_sam fast_lio rf2o_laser_odometry librealsense2 realsense2_camera libopencv-dev libopencv-contrib-dev libopencv-imgproc-dev python-opencv python3-opencv"; \
+             EXTERNAL_SKIP=${SKIPPED_ROSDEP_KEYS}; \
              ros2 run micro_ros_setup create_agent_ws.sh; \
              ros2 run micro_ros_setup build_agent.sh'
 
@@ -495,10 +599,11 @@ RUN bash -c 'source install/setup.bash; \
 # Todo: add autoware environment variables like vehicle_id
 RUN echo 'alias build="colcon build --symlink-install  --event-handlers console_direct+"' >> ~/.bashrc && \
     echo 'source /opt/ros/${ROS_DISTRO}/setup.bash' >> ~/.bashrc && \
-    echo 'source /opt/ros/${ROS_DISTRO}/install/setup.bash' >> ~/.bashrc && \
     echo "source ${BUILD_HOME}/install/setup.bash" >> ~/.bashrc && \
     echo "export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp" >> ~/.bashrc && \
+#    echo "export RMW_IMPLEMENTATION=rmw_fastrtps_cpp" >> ~/.bashrc && \
     echo "export CYCLONEDDS_URI=file://$BUILD_HOME/src/autoware.f1tenth/cyclone_dds/cyclonedds_config.xml" >> ~/.bashrc && \
+    echo "export FASTRTPS_DEFAULT_PROFILES_FILE=$BUILD_HOME/src/autoware.f1tenth/fast_dds/fastdds_profile.xml" >> ~/.bashrc && \
     echo 'export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/cuda/targets/aarch64-linux/lib/stubs:/opt/ros/${ROS_DISTRO}/install/lib' >> ~/.bashrc && \
     echo 'export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib' >> ~/.bashrc && \
     echo 'export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/cuda/lib64:/usr/local/cuda/extras/CUPTI/lib64' >> ~/.bashrc && \

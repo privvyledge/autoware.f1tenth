@@ -5,6 +5,7 @@
 # todo: setup particle filter
 # todo: install Autoware dev tools manually since we're not using their container or modify setup-dev-env and ansible scripts [done]
 # todo: use a "repos" file and pull with vcs for source files and use an apt list file for apt installation
+# todo: add kiss-icp suport https://github.com/PRBonn/kiss-icp
 # pull base image. Any base image with CUDA, cuDNN, TensorRT and Pytorch installed. Optionally OpenCV, tensorflow, etc
 # Autoware: https://github.com/autowarefoundation/autoware/pkgs/container/autoware-universe/versions?filters%5Bversion_type%5D=tagged
 # or OSRF ROS2 or Dusty-NV
@@ -55,12 +56,15 @@ ENV ROS_ROOT=/opt/ros/${ROS_DISTRO}
 ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 
 ENV NVIDIA_DRIVER_CAPABILITIES all
-ENV NVIDIA_VISIBLE_DEVICES all  # causes graphical failures
+ENV NVIDIA_VISIBLE_DEVICES all
 
 # Install Sudo
 RUN apt-get update && DEBIAN_FRONTEND="noninteractive" apt-get install -yq sudo tzdata && \
     ln -fns /usr/share/zoneinfo/${TZ} /etc/localtime && echo $TZ > /etc/timezone && \
     dpkg-reconfigure -f noninteractive tzdata
+
+################################################### remove CUDA built OPENCV to avoid installation issues. Otherwise, all packages here must be manually built/compiled from sources. Todo: remove and generate the dependencies of all packages installed via apt or rosdep then just clone the rest.
+RUN sudo apt purge -y *opencv*
 
 #################################################### (Optional) Setup ROS2
 WORKDIR /
@@ -102,6 +106,7 @@ RUN sudo apt-get update -y && DEBIAN_FRONTEND="noninteractive" sudo apt-get inst
     python3-yaml \
     python3-tk \
     python3-pyqt5 \
+    python3-bloom \
 #    libopencv-dev \
     libssl-dev \
     libusb-1.0-0-dev \
@@ -109,7 +114,24 @@ RUN sudo apt-get update -y && DEBIAN_FRONTEND="noninteractive" sudo apt-get inst
     libglfw3-dev \
     libgl1-mesa-dev \
     libglu1-mesa-dev \
-    qtcreator && \
+    libgoogle-glog-dev \
+    qtcreator \
+    libgstreamer1.0-0 \
+    gstreamer1.0-plugins-base \
+    gstreamer1.0-plugins-good \
+    gstreamer1.0-plugins-bad \
+    gstreamer1.0-plugins-ugly \
+    gstreamer1.0-libav \
+    gstreamer1.0-tools \
+    gstreamer1.0-x \
+    gstreamer1.0-alsa \
+    gstreamer1.0-gl \
+    gstreamer1.0-gtk3 \
+    gstreamer1.0-qt5 \
+    gstreamer1.0-pulseaudio \
+    libglib2.0-dev \
+    libgstrtspserver-1.0-dev \
+    gstreamer1.0-rtsp && \
     sudo rm -rf /var/lib/apt/lists/*
 
 # Install Python Packages. Todo: add ultralytics, YOLOv8, YOLOv4, etc. dependencies
@@ -137,7 +159,6 @@ RUN cd "$BUILD_HOME/src" && rm -rf f1tenth_system && git clone https://github.co
     cd f1tenth_system && git submodule update --init --force --remote && \
     cd vesc && git checkout ros2_motor_direction_fix
 #################################################### (Optional) Setup VESC
-#################################################### (Optional) Setup Autoware
 
 #################################################### (Optional) Setup ROS Nav
 RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
@@ -156,25 +177,21 @@ RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install
 #-------------------------------------------------
 #RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
 #    ros-${ROS_DISTRO}-spatio-temporal-voxel-layer ros-${ROS_DISTRO}-nonpersistent-voxel-layer
-
 RUN cd "${BUILD_HOME}/src" && \
     git clone -b ros2 https://github.com/SteveMacenski/spatio_temporal_voxel_layer.git && \
     git clone -b ros2 https://github.com/SteveMacenski/nonpersistent_voxel_layer.git
-
 
 #################################################### (Optional) Setup SLAM toolbox. Use galactic and above (or noetic) to get pose
 RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
     ros-${ROS_DISTRO}-slam-toolbox && \
     sudo rm -rf /var/lib/apt/lists/*
-# RUN cd "$BUILD_HOME/src" && git clone https://github.com/SteveMacenski/slam_toolbox.git -b ${ROS_DISTRO}-devel && \
-#    cd slam_toolbox && rosdep install -q -y -r --from-paths src --ignore-src
+# RUN cd "$BUILD_HOME/src" && git clone https://github.com/SteveMacenski/slam_toolbox.git -b ${ROS_DISTRO}-devel
 
 #################################################### (Optional) Setup Robot localization
 RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
     ros-${ROS_DISTRO}-robot-localization && \
     sudo rm -rf /var/lib/apt/lists/*
-# RUN cd "$BUILD_HOME/src" && git clone https://github.com/cra-ros-pkg/robot_localization.git -b ${ROS_DISTRO}-devel && \
-#    cd robot_localization && rosdep install -q -y -r --from-paths src --ignore-src
+# RUN cd "$BUILD_HOME/src" && git clone https://github.com/cra-ros-pkg/robot_localization.git -b ${ROS_DISTRO}-devel
 
 #################################################### (Optional) Setup IMU Filters
 RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
@@ -197,8 +214,7 @@ RUN cd "$BUILD_HOME/src" && sudo apt-get update && DEBIAN_FRONTEND="noninteracti
 RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
     ros-${ROS_DISTRO}-depthimage-to-laserscan  && \
     sudo rm -rf /var/lib/apt/lists/*
-# RUN #cd "$BUILD_HOME/src" && git clone https://github.com/ros-perception/depthimage_to_laserscan.git -b ros2 && \
-#    cd laser_filters && rosdep install -q -y -r --from-paths src --ignore-src
+# RUN #cd "$BUILD_HOME/src" && git clone https://github.com/ros-perception/depthimage_to_laserscan.git -b ros2
 
 #################################################### Setup laser odometry packages. Todo: setup for humble
 #RUN cd "$BUILD_HOME/src" && git clone https://github.com/Adlink-ROS/rf2o_laser_odometry.git && \
@@ -336,9 +352,46 @@ RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install
     sudo rm -rf /var/lib/apt/lists/*
 
 #----------------------------------------------
-# Setup Dualshock 4 ROS image. Make sure to setup the drivers on the host
+# Setup Dualshock 4 ROS image. Make sure to setup the drivers on the host. (optional)
 #----------------------------------------------
+RUN cd /sdks/ && git clone https://github.com/naoki-mizuno/ds4drv --branch devel \
+    && cd ds4drv \
+    && python3 setup.py install
 RUN cd ${BUILD_HOME}/src && git clone https://github.com/naoki-mizuno/ds4_driver.git
+
+#----------------------------------------------
+# YOLOv8 nodes. todo: verify if downloading Arial.ttf* is necessary
+# Note that downgrading numpy might cause issues with other python packages, i.e onnxruntime-gpu and tensorflow as they require higher numpy versions. Could use a pytorch only base image instead.
+
+# To export to tensorrt
+# Using the command line:
+# Using python: python3 -c "from ultralytics import YOLO;model = YOLO('yolov8s.pt');model.export(format='engine', half=True, simplify=True)"
+
+# YOLOv8 ROS Usage. todo: put in launch files:
+# images only
+# ros2 launch ultralytics_ros tracker.launch.xml debug:=false input_topic:=/camera/camera/color/image_raw yolo_model:=yolov8m-seg.pt
+# ros2 launch yolov8_bringup yolov8.launch.py model:=yolov8m-seg.pt input_image_topic:=/camera/camera/color/image_raw # or yolov9
+# 3D
+# ros2 launch ultralytics_ros tracker_with_cloud.launch.xml debug:=false input_topic:=/camera/camera/color/image_raw yolo_model:=yolov8m-seg.pt camera_info_topic:=/camera/camera/color/camera_info lidar_topic:=/camera/camera/depth/color/points yolo_result_topic:=/yolo/realsense/rgb yolo_3d_result_topic:=/yolo/realsense_3d_result cluster_tolerance:=0.3  voxel_leaf_size:=0.1 min_cluster_size:=100 max_cluster_size:=10000
+# ros2 launch yolov8_bringup yolov8_3d.launch.py model:=yolov8m-seg.pt input_image_topic:=/camera/camera/color/image_raw input_depth_topic:=/camera/camera/depth/image_rect_raw input_depth_info_topic:=/camera/camera/depth/camera_info target_frame:=camera_link
+#----------------------------------------------
+# Install ultralytics
+RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+    git-lfs gcc git zip curl htop libgl1 libglib2.0-0 libpython3-dev gnupg g++ libusb-1.0-0 && \
+    mkdir -p /root/.config/Ultralytics && cd /root/.config/Ultralytics && wget https://github.com/ultralytics/assets/releases/download/v0.0.0/Arial.ttf && wget https://github.com/ultralytics/assets/releases/download/v0.0.0/Arial.Unicode.ttf && \
+    cd /sdks && git clone https://github.com/ultralytics/ultralytics && \
+    cd ultralytics &&  grep -v "opencv-python" pyproject.toml > temp.toml && mv temp.toml pyproject.toml && \
+    python3 -m pip install --upgrade pip wheel && \
+    python3 -m pip install lap==0.4.0 numpy==1.23.5 typing-extensions>=4.4.0 Bottleneck==1.3.4 onnxsim>=0.4.33 && \
+    cd /sdks/ultralytics/ && pip install --no-cache -e . && \
+#    export OMP_NUM_THREADS=1 && \
+    cd ${BUILD_HOME}/src && GIT_LFS_SKIP_SMUDGE=1 git clone -b humble-devel https://github.com/Alpaca-zip/ultralytics_ros.git && \
+    git clone https://github.com/mgonzs13/yolov8_ros.git && \
+    sudo rm -rf /var/lib/apt/lists/* \
+
+#----------------------------------------------
+# Install Apriltag
+#----------------------------------------------
 
 ##--------------------------------
 ## Setup NVIDIA Isaac packages
@@ -384,17 +437,21 @@ ENV PYTHONWARNINGS=ignore:::setuptools.command.install,ignore:::setuptools.comma
 
 WORKDIR $BUILD_HOME
 #ARG MAKEFLAGS="-j4 -l4"
+ARG SKIPPED_ROSDEP_KEYS="cmake_modules pacmod3_msgs  python3-open3d \
+    librealsense2 realsense2_camera libopencv-dev  libopencv-contrib-dev libopencv-imgproc-dev python-opencv python3-opencv \
+    libpcl-all-dev libpcl-all pcl_conversions pcl_ros perception_pcl  \
+    libpcl-common libpcl-io libpcl-features libpcl-segmentation libpcl-surface"
 RUN sudo apt update && \
     rosdep update && \
     source /opt/ros/${ROS_DISTRO}/setup.bash && \
-    rosdep install --from-paths src --ignore-src -r -y -q --os=ubuntu:jammy --skip-keys "rf2o_laser_odometry librealsense2 realsense2_camera libopencv-dev  libopencv-contrib-dev libopencv-imgproc-dev python-opencv python3-opencv" && \
+    rosdep install --from-paths src --ignore-src -r -y -q --os=ubuntu:jammy --rosdistro=humble --skip-keys "${SKIPPED_ROSDEP_KEYS}" && \
     colcon build --symlink-install --event-handlers console_direct+ --base-paths src --cmake-args '  -Wno-dev' ' --no-warn-unused-cli' ' -DBUILD_ACCELERATE_GPU_WITH_GLSL=ON' ' -DCMAKE_BUILD_TYPE=Release' ' -DCMAKE_EXPORT_COMPILE_COMMANDS=ON' ' -DCMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs' ' -DCMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined"  -DDOWNLOAD_ARTIFACTS=ON'
 
 #-----------------------------
 # Setup microros agent, i.e create_agent_ws, then build_agent. Modified to skip rosdep keys and specify colcon build arguments
 #-----------------------------
 RUN bash -c 'source install/setup.bash; \
-             EXTERNAL_SKIP="lio_sam fast_lio rf2o_laser_odometry librealsense2 realsense2_camera libopencv-dev libopencv-contrib-dev libopencv-imgproc-dev python-opencv python3-opencv"; \
+             EXTERNAL_SKIP=${SKIPPED_ROSDEP_KEYS}; \
              ros2 run micro_ros_setup create_agent_ws.sh; \
              ros2 run micro_ros_setup build_agent.sh'
 
@@ -412,7 +469,9 @@ RUN echo 'alias build="colcon build --symlink-install  --event-handlers console_
     echo 'source /opt/ros/${ROS_DISTRO}/setup.bash' >> ~/.bashrc && \
     echo "source ${BUILD_HOME}/install/setup.bash" >> ~/.bashrc && \
     echo "export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp" >> ~/.bashrc && \
+#    echo "export RMW_IMPLEMENTATION=rmw_fastrtps_cpp" >> ~/.bashrc && \
     echo "export CYCLONEDDS_URI=file://$BUILD_HOME/src/autoware.f1tenth/cyclone_dds/cyclonedds_config.xml" >> ~/.bashrc && \
+    echo "export FASTRTPS_DEFAULT_PROFILES_FILE=$BUILD_HOME/src/autoware.f1tenth/fast_dds/fastdds_profile.xml" >> ~/.bashrc && \
     echo 'export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/cuda/targets/aarch64-linux/lib/stubs:/opt/ros/${ROS_DISTRO}/install/lib' >> ~/.bashrc && \
     echo 'export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib' >> ~/.bashrc && \
     echo 'export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/cuda/lib64:/usr/local/cuda/extras/CUPTI/lib64' >> ~/.bashrc && \
