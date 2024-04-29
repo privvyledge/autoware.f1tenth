@@ -2,7 +2,8 @@
 
 # To build Pytorch (https://qengineering.eu/install-pytorch-on-jetson-nano.html | https://github.com/dusty-nv/jetson-containers/blob/master/packages/pytorch/build.sh | https://github.com/hillct/jetson-containers-extra/blob/develop/Dockerfile)
 # ros:humble-ros-base-jammy, ros:humble-perception-jammy
-FROM ubuntu:jammy
+#FROM ubuntu:jammy
+FROM ros:humble-ros-base-jammy
 
 # Set up the shell
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
@@ -14,24 +15,26 @@ ENV TZ=America/New_York
 ENV NVIDIA_DRIVER_CAPABILITIES all
 ENV NVIDIA_VISIBLE_DEVICES all
 
-ARG L4T_VERSION="35.4"
 ARG ROS_VERSION="ROS2"
 ARG ROS_DISTRO="humble"
 ENV ROS_DISTRO=${ROS_DISTRO}
 ENV ROS_ROOT=/opt/ros/${ROS_DISTRO}
 ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 
+######### Jetpack 5.1.4 L4T 35.4.1
+ARG L4T_VERSION="35.4"
 # Torch links: https://forums.developer.nvidia.com/t/pytorch-for-jetson/72048
 ARG CUDA=11-8
 ARG cudnn_version=8.6.0.166-1+cuda11.4
 ARG tensorrt_version=8.5.2-1+cuda11.4
-ARG TORCH_INSTALL=https://developer.download.nvidia.cn/compute/redist/jp/v512/pytorch/torch-2.1.0a0+41361538.nv23.06-cp38-cp38-linux_aarch64.whl
+#ARG TORCH_INSTALL=https://developer.download.nvidia.cn/compute/redist/jp/v512/pytorch/torch-2.1.0a0+41361538.nv23.06-cp38-cp38-linux_aarch64.whl
 
-## For Jetpack 6
-#ARG CUDA=12-2
-#ARG cudnn_version=8.6.0.166-1+cuda11.4
-#ARG ensorrt_version=8.5.2-1+cuda11.4
-#ARG TORCH_INSTALL=https://developer.download.nvidia.com/compute/redist/jp/v60dp/pytorch/torch-2.2.0a0+81ea7a4.nv24.01-cp310-cp310-linux_aarch64.whl
+## For Jetpack 6.0 DP L4T 36.2.0
+ARG L4T_VERSION="36.2"
+ARG CUDA=12-2
+ARG cudnn_version=8.9.4.25-1+cuda12.2
+ARG tensorrt_version=8.6.2.3-1+cuda12.2
+ARG TORCH_INSTALL=https://developer.download.nvidia.com/compute/redist/jp/v60dp/pytorch/torch-2.2.0a0+81ea7a4.nv24.01-cp310-cp310-linux_aarch64.whl
 
 # Install Sudo
 RUN apt-get update && DEBIAN_FRONTEND="noninteractive" apt-get install -yq sudo tzdata && \
@@ -63,6 +66,7 @@ RUN sudo apt-get update -y && DEBIAN_FRONTEND="noninteractive" sudo apt-get inst
     python3-pip \
     python3-setuptools \
     python3-numpy \
+    python3-rosdep \
     python3-matplotlib \
     python3-pil \
     python3-yaml \
@@ -229,8 +233,8 @@ RUN apt-get update && DEBIAN_FRONTEND="noninteractive" apt-get install -y --no-i
     libnvonnxparsers-dev=${tensorrt_version} \
     libnvparsers-dev=${tensorrt_version} \
     libnvinfer-plugin-dev=${tensorrt_version}\
-    libnvinfer-headers-dev=${tensorrt_version} \
-    libnvinfer-headers-plugin-dev=${tensorrt_version} \
+#    libnvinfer-headers-dev=${tensorrt_version} \
+#    libnvinfer-headers-plugin-dev=${tensorrt_version} \
     tensorrt tensorrt-dev && \
 #    DEBIAN_FRONTEND="noninteractive" apt-get install -y --no-install-recommends python3-libnvinfer python3-libnvinfer-dev && \
     sudo apt-mark hold libnvinfer-dev libnvonnxparsers-dev && \

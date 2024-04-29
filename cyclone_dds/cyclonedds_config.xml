@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!--
+ This version supports multicasting.
  To use: export CYCLONEDDS_URI=file:///absolute/path/to/cyclonedds_config.xml
          sudo cp 10-cyclone-max.conf /etc/sysctl.d/10-cyclone-max.conf
          sudo sysctl -p /etc/sysctl.d/10-cyclone-max.conf (to update the parameters)

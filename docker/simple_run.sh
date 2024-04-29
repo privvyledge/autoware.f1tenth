@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 set -e
-#/f1tenth_ws/src/autoware.f1tenth/cyclone_dds/cyclonedds_config.xml
+#/f1tenth_ws/src/autoware.f1tenth/cyclone_dds/cyclonedds_config_static.xml
 IMAGE="privvyledge/f1tenth:humble-latest"  # "privvyledge/r36.2.0-ros-humble-ml:latest"
 MOUNT_X="-e DISPLAY=$DISPLAY -v /tmp/.X11-unix/:/tmp/.X11-unix"
 docker run -it --rm --runtime nvidia --network host  ${MOUNT_X} --privileged \
