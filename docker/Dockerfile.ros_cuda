@@ -3,7 +3,8 @@
 # To build Pytorch (https://qengineering.eu/install-pytorch-on-jetson-nano.html | https://github.com/dusty-nv/jetson-containers/blob/master/packages/pytorch/build.sh | https://github.com/hillct/jetson-containers-extra/blob/develop/Dockerfile)
 # ros:humble-ros-base-jammy, ros:humble-perception-jammy
 #FROM ubuntu:jammy
-FROM ros:humble-ros-base-jammy
+#FROM ros:humble-ros-base-jammy
+FROM ros:humble-perception-jammy
 
 # Set up the shell
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
@@ -29,8 +30,9 @@ ARG cudnn_version=8.6.0.166-1+cuda11.4
 ARG tensorrt_version=8.5.2-1+cuda11.4
 #ARG TORCH_INSTALL=https://developer.download.nvidia.cn/compute/redist/jp/v512/pytorch/torch-2.1.0a0+41361538.nv23.06-cp38-cp38-linux_aarch64.whl
 
-## For Jetpack 6.0 DP L4T 36.2.0
+## For Jetpack 6.0 DeveloperPreview L4T 36.2.0 and Jetpack 6.0 ProductionRelease 36.3.0
 ARG L4T_VERSION="36.2"
+ARG L4T_VERSION="36.3"
 ARG CUDA=12-2
 ARG cudnn_version=8.9.4.25-1+cuda12.2
 ARG tensorrt_version=8.6.2.3-1+cuda12.2

@@ -1,4 +1,5 @@
-FROM privvyledge/ros:humble-desktop-full-cuda-11-8
+#FROM privvyledge/ros:humble-desktop-full-cuda-11-8
+FROM privvyledge/ros:humble-desktop-full-cuda-12-2
 
 # Set up the shell
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
@@ -242,7 +243,7 @@ RUN mkdir -p "/sdks/" && cd "/sdks/" && \
 
 #################################################### Setup YDLidar
 RUN mkdir -p "/sdks/YDLIDAR" && cd "/sdks/YDLIDAR" && git clone https://github.com/YDLIDAR/YDLidar-SDK.git && \
-    cd YDLidar-SDK && mkdir build && cd build && cmake .. && make && sudo make install
+    cd YDLidar-SDK && mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=release .. && make && sudo make install
 
 RUN cd "$BUILD_HOME/src" && git clone https://github.com/YDLIDAR/ydlidar_ros2_driver.git -b ${ROS_DISTRO}
 
@@ -265,6 +266,7 @@ RUN export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/targets/aarch64-linu
        -DBUILD_EXAMPLES=true \
 	   -DFORCE_RSUSB_BACKEND=true \
 	   -DBUILD_WITH_CUDA=true \
+       -DBUILD_WITH_OPENMP=false \
 	   -DCMAKE_BUILD_TYPE=release \
 	   -DBUILD_PYTHON_BINDINGS=bool:true \
 	   -DPYTHON_EXECUTABLE=/usr/bin/python3 \
@@ -306,10 +308,10 @@ RUN export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/targets/aarch64-linu
 RUN cd ${BUILD_HOME}/src && git clone https://github.com/privvyledge/realsense-ros.git
 
 #################################################### Setup RTAB-Map (which also publishes odometry from laser_scan)
-RUN cd "$BUILD_HOME/src" && git clone https://github.com/introlab/rtabmap.git && git clone https://github.com/introlab/rtabmap_ros.git -b ${ROS_DISTRO}-devel
-#RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
-#    ros-${ROS_DISTRO}-rtabmap* && \
-#    sudo rm -rf /var/lib/apt/lists/*
+# RUN cd "$BUILD_HOME/src" && git clone https://github.com/introlab/rtabmap.git && git clone https://github.com/introlab/rtabmap_ros.git -b ${ROS_DISTRO}-devel
+RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+    ros-${ROS_DISTRO}-rtabmap-odom ros-${ROS_DISTRO}-rtabmap-slam && \
+    sudo rm -rf /var/lib/apt/lists/*
 
 #----------------------------------------------
 # Install ROSBag support
@@ -323,6 +325,13 @@ RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install
 #----------------------------------------------
 RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
     ros-${ROS_DISTRO}-rmw-cyclonedds-cpp && \
+    sudo rm -rf /var/lib/apt/lists/*
+
+#----------------------------------------------
+# Install Image Transport Plugin to ideally reduce cpu usage when publishing images
+#----------------------------------------------
+RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+    ros-${ROS_DISTRO}-image-transport-plugins && \
     sudo rm -rf /var/lib/apt/lists/*
 
 ##----------------------------------------------
@@ -373,6 +382,7 @@ RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install
 #-----------------------------------------------
 # Install/build Open3D (https://www.open3d.org/docs/release/arm.html). Doesn't work in dusty-nv container but works in Nvidia Isaac ROS container.
 # To build, see https://www.open3d.org/docs/release/arm.html#building-open3d-python-wheel-with-docker
+# todo: compile from source with CUDA support
 #-----------------------------------------------
 #RUN python3 -m pip install open3d
 RUN sudo apt update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends python3-open3d
