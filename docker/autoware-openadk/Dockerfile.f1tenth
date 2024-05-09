@@ -440,7 +440,7 @@ RUN sudo apt update && \
     rosdep install --from-paths src --ignore-src -r -y -q --os=ubuntu:jammy --rosdistro=humble --skip-keys "${SKIPPED_ROSDEP_KEYS}"
 
 RUN source /opt/ros/${ROS_DISTRO}/setup.bash && \
-    colcon build --symlink-install --event-handlers console_direct+ --base-paths src --cmake-args '  -Wno-dev' ' --no-warn-unused-cli' ' -DBUILD_ACCELERATE_GPU_WITH_GLSL=ON' ' -DCMAKE_BUILD_TYPE=Release' ' -DCMAKE_EXPORT_COMPILE_COMMANDS=ON' ' -DCMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs' ' -DCMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined"  -DDOWNLOAD_ARTIFACTS=ON'
+    colcon build --symlink-install --event-handlers console_direct+ --base-paths src --cmake-args '  -Wno-dev' ' --no-warn-unused-cli' ' -DBUILD_ACCELERATE_GPU_WITH_GLSL=OFF' ' -DCMAKE_BUILD_TYPE=Release' ' -DCMAKE_EXPORT_COMPILE_COMMANDS=ON' ' -DCMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs' ' -DCMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined"  -DDOWNLOAD_ARTIFACTS=ON'
 
 #-----------------------------
 # Setup microros agent, i.e create_agent_ws, then build_agent. Modified to skip rosdep keys and specify colcon build arguments
@@ -464,9 +464,9 @@ RUN echo 'alias build="colcon build --symlink-install  --event-handlers console_
     echo 'source /opt/ros/${ROS_DISTRO}/setup.bash' >> ~/.bashrc && \
     echo "source ${BUILD_HOME}/install/setup.bash" >> ~/.bashrc && \
     echo "export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp" >> ~/.bashrc && \
-#    echo "export RMW_IMPLEMENTATION=rmw_fastrtps_cpp" >> ~/.bashrc && \
-    echo "export CYCLONEDDS_URI=file://$BUILD_HOME/src/autoware.f1tenth/cyclone_dds/cyclonedds_config.xml" >> ~/.bashrc && \
-    echo "export FASTRTPS_DEFAULT_PROFILES_FILE=$BUILD_HOME/src/autoware.f1tenth/fast_dds/fastdds_profile.xml" >> ~/.bashrc && \
+##    echo "export RMW_IMPLEMENTATION=rmw_fastrtps_cpp" >> ~/.bashrc && \
+#    echo "export CYCLONEDDS_URI=file://$BUILD_HOME/src/autoware.f1tenth/cyclone_dds/cyclonedds_config.xml" >> ~/.bashrc && \
+#    echo "export FASTRTPS_DEFAULT_PROFILES_FILE=$BUILD_HOME/src/autoware.f1tenth/fast_dds/fastdds_profile.xml" >> ~/.bashrc && \
     echo 'export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/cuda/targets/aarch64-linux/lib/stubs:/opt/ros/${ROS_DISTRO}/install/lib' >> ~/.bashrc && \
     echo 'export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib' >> ~/.bashrc && \
     echo 'export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/cuda/lib64:/usr/local/cuda/extras/CUPTI/lib64' >> ~/.bashrc && \

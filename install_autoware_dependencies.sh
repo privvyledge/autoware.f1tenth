@@ -53,21 +53,21 @@ sudo sh -c 'echo "deb [trusted=yes] https://s3.amazonaws.com/autonomoustuff-repo
 sudo apt update
 sudo apt install -y ros-"${ROS_DISTRO}"-pacmod3
 
-######## Install Kisak Mesa (optional)
-# Add the Kisak Mesa PPA
-sudo add-apt-repository -y ppa:kisak/kisak-mesa
-sudo apt-get update
-
-# insall the MESA libraries
-sudo apt-get install -y \
-libegl-mesa0 \
-libegl1-mesa-dev \
-libgbm-dev \
-libgbm1 \
-libgl1-mesa-dev \
-libgl1-mesa-dri \
-libglapi-mesa \
-libglx-mesa0
+######### Install Kisak Mesa (optional)
+## Add the Kisak Mesa PPA
+#sudo add-apt-repository -y ppa:kisak/kisak-mesa
+#sudo apt-get update
+#
+## insall the MESA libraries
+#sudo apt-get install -y \
+#libegl-mesa0 \
+#libegl1-mesa-dev \
+#libgbm-dev \
+#libgbm1 \
+#libgl1-mesa-dev \
+#libgl1-mesa-dri \
+#libglapi-mesa \
+#libglx-mesa0
 
 
 ######## Install ROS dev tools (should be installed if building ROS from sources)
