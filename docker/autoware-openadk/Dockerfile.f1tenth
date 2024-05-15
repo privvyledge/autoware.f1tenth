@@ -268,7 +268,7 @@ RUN export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/targets/aarch64-linu
 	   -DBUILD_WITH_CUDA=true \
        -DBUILD_WITH_OPENMP=false \
 	   -DCMAKE_BUILD_TYPE=release \
-	   -DBUILD_PYTHON_BINDINGS=bool:true \
+	   -DBUILD_PYTHON_BINDINGS:bool=true \
 	   -DPYTHON_EXECUTABLE=/usr/bin/python3 \
        -DBUILD_GRAPHICAL_EXAMPLES=true \
 	   -DPYTHON_INSTALL_DIR=$(python3 -c 'import sys; print(f"/usr/lib/python{sys.version_info.major}.{sys.version_info.minor}/dist-packages")') \
@@ -450,11 +450,6 @@ RUN bash -c 'source install/setup.bash; \
              ros2 run micro_ros_setup create_agent_ws.sh; \
              ros2 run micro_ros_setup build_agent.sh'
 
-#--------------------------------
-# Todo: run the following. See (https://autowarefoundation.github.io/autoware-documentation/release-v1.0_beta/how-to-guides/others/advanced-usage-of-colcon/#changing-the-default-configuration-of-colcon)
-#--------------------------------
-
-
 #-----------------------------
 # Setup environment variables
 #-----------------------------
@@ -472,6 +467,7 @@ RUN echo 'alias build="colcon build --symlink-install  --event-handlers console_
     echo 'export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/cuda/lib64:/usr/local/cuda/extras/CUPTI/lib64' >> ~/.bashrc && \
 #    echo 'export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/lib/aarch64-linux-gnu/tegra' >> ~/.bashrc && \  # causes libgl issues
     echo 'export PATH=${PATH}:/usr/local/cuda/bin' >> ~/.bashrc && \
+    echo 'export PYTHONPATH=${PYTHONPATH}:/usr/local/lib' >> ~/.bashrc && \
     echo 'CUDACXX=/usr/local/cuda/bin/nvcc' >> ~/.bashrc && \
     echo 'export ACADOS_ROOT=/sdks/acados' >> ~/.bashrc && \
     echo 'export ACADOS_PATH=${ACADOS_ROOT}' >> ~/.bashrc && \
@@ -485,6 +481,8 @@ RUN echo 'alias build="colcon build --symlink-install  --event-handlers console_
     echo "source /usr/share/colcon_cd/function/colcon_cd.sh" >> ~/.bashrc && \
     echo "export _colcon_cd_root=${ROS_ROOT}" >> ~/.bashrc && \
     echo "source /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash" >> ~/.bashrc
+
+#RUN sudo rm -rf /sdks
 
 ## RUN ros2 doctor # run this if the LIDAR doesn't run (https://github.com/YDLIDAR/ydlidar_ros2_driver/issues/10)
 
