@@ -254,7 +254,7 @@ RUN cd "$BUILD_HOME/src" && git clone https://github.com/YDLIDAR/ydlidar_ros2_dr
 #    sudo rm -rf /var/lib/apt/lists/*
 
 # todo: set envs above instead of exporting
-# branches R/2542, master, development, etc
+# branches R/255, R/2542, master, development, etc
 ARG LIBREALSENSE_BRANCH="master"
 RUN export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/targets/aarch64-linux/lib/stubs:/opt/ros/${ROS_DISTRO}/install/lib && \
     export CUDACXX=/usr/local/cuda/bin/nvcc && export PATH=${PATH}:/usr/local/cuda/bin && \
@@ -268,7 +268,7 @@ RUN export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/targets/aarch64-linu
 	   -DBUILD_WITH_CUDA=true \
        -DBUILD_WITH_OPENMP=false \
 	   -DCMAKE_BUILD_TYPE=release \
-	   -DBUILD_PYTHON_BINDINGS:bool=true \
+	   -DBUILD_PYTHON_BINDINGS:BOOL=true \
 	   -DPYTHON_EXECUTABLE=/usr/bin/python3 \
        -DBUILD_GRAPHICAL_EXAMPLES=true \
 	   -DPYTHON_INSTALL_DIR=$(python3 -c 'import sys; print(f"/usr/lib/python{sys.version_info.major}.{sys.version_info.minor}/dist-packages")') \
@@ -278,6 +278,10 @@ RUN export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/targets/aarch64-linu
 #    cd ../ && \
 #    sudo cp ./config/99-realsense-libusb.rules /etc/udev/rules.d/
 
+#RUN python3 -m pip install pyrealsense2
+
+#ARG LIBREALSENSE_VERSION="2.55.1"
+# https://github.com/IntelRealSense/librealsense/archive/refs/tags/v2.55.1.zip
 #ARG LIBREALSENSE_VERSION="2.54.2"
 #RUN export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/targets/aarch64-linux/lib/stubs:/opt/ros/${ROS_DISTRO}/install/lib && \
 #    export CUDACXX=/usr/local/cuda/bin/nvcc && export PATH=${PATH}:/usr/local/cuda/bin && \
@@ -310,8 +314,13 @@ RUN cd ${BUILD_HOME}/src && git clone https://github.com/privvyledge/realsense-r
 #################################################### Setup RTAB-Map (which also publishes odometry from laser_scan)
 # RUN cd "$BUILD_HOME/src" && git clone https://github.com/introlab/rtabmap.git && git clone https://github.com/introlab/rtabmap_ros.git -b ${ROS_DISTRO}-devel
 RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
-    ros-${ROS_DISTRO}-rtabmap-odom ros-${ROS_DISTRO}-rtabmap-slam && \
+    ros-${ROS_DISTRO}-rtabmap-odom ros-${ROS_DISTRO}-rtabmap-slam ros-${ROS_DISTRO}-grid-map-rviz-plugin && \
     sudo rm -rf /var/lib/apt/lists/*
+
+#----------------------------------------------
+# Setup KISS-ICP support
+#----------------------------------------------
+RUN cd ${BUILD_HOME}/src && git clone https://github.com/PRBonn/kiss-icp.git
 
 #----------------------------------------------
 # Install ROSBag support
@@ -331,7 +340,7 @@ RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install
 # Install Image Transport Plugin to ideally reduce cpu usage when publishing images
 #----------------------------------------------
 RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
-    ros-${ROS_DISTRO}-image-transport-plugins && \
+    ros-${ROS_DISTRO}-image-transport ros-${ROS_DISTRO}-image-transport-plugins && \
     sudo rm -rf /var/lib/apt/lists/*
 
 ##----------------------------------------------
