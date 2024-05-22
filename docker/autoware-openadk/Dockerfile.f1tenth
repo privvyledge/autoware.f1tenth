@@ -278,6 +278,10 @@ RUN export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/targets/aarch64-linu
 #    cd ../ && \
 #    sudo cp ./config/99-realsense-libusb.rules /etc/udev/rules.d/
 
+#export PYTHONPATH=$PYTHONPATH:/home/pi/librealsense/build/wrappers/python
+#export PYTHONPATH=$PYTHONPATH:/home/pi/librealsense/build/
+#export PYTHONPATH=$PYTHONPATH:/home/pi/librealsense
+
 #RUN python3 -m pip install pyrealsense2
 
 #ARG LIBREALSENSE_VERSION="2.55.1"
@@ -314,7 +318,8 @@ RUN cd ${BUILD_HOME}/src && git clone https://github.com/privvyledge/realsense-r
 #################################################### Setup RTAB-Map (which also publishes odometry from laser_scan)
 # RUN cd "$BUILD_HOME/src" && git clone https://github.com/introlab/rtabmap.git && git clone https://github.com/introlab/rtabmap_ros.git -b ${ROS_DISTRO}-devel
 RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
-    ros-${ROS_DISTRO}-rtabmap-odom ros-${ROS_DISTRO}-rtabmap-slam ros-${ROS_DISTRO}-grid-map-rviz-plugin && \
+    ros-${ROS_DISTRO}-rtabmap-odom ros-${ROS_DISTRO}-rtabmap-slam \
+    ros-${ROS_DISTRO}-rtabmap-launch ros-${ROS_DISTRO}-grid-map-rviz-plugin && \
     sudo rm -rf /var/lib/apt/lists/*
 
 #----------------------------------------------
