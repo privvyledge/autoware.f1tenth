@@ -319,7 +319,8 @@ RUN cd ${BUILD_HOME}/src && git clone https://github.com/privvyledge/realsense-r
 # RUN cd "$BUILD_HOME/src" && git clone https://github.com/introlab/rtabmap.git && git clone https://github.com/introlab/rtabmap_ros.git -b ${ROS_DISTRO}-devel
 RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
     ros-${ROS_DISTRO}-rtabmap-odom ros-${ROS_DISTRO}-rtabmap-slam \
-    ros-${ROS_DISTRO}-rtabmap-launch ros-${ROS_DISTRO}-grid-map-rviz-plugin && \
+    ros-${ROS_DISTRO}-rtabmap-launch ros-${ROS_DISTRO}-rtabmap-python ros-${ROS_DISTRO}-rtabmap-viz \
+    ros-${ROS_DISTRO}-rtabmap-rviz-plugins ros-${ROS_DISTRO}-grid-map-rviz-plugin && \
     sudo rm -rf /var/lib/apt/lists/*
 
 #----------------------------------------------
