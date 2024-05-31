@@ -19,17 +19,15 @@
 <!--        <Discovery>-->
 <!--            <EnableTopicDiscoveryEndpoints>true</EnableTopicDiscoveryEndpoints>-->
 <!--        </Discovery>-->
-        <Discovery>
-                <Peers>
-                        <Peer address="192.168.10.116"/>
-                        <Peer address="192.168.10.123"/>
-                        <Peer address="192.168.10.196"/>
-                        <Peer address="146.201.63.227"/>
-                        <Peer address="192.168.10.187"/>
-                </Peers>
-                <ParticipantIndex>auto</ParticipantIndex>
-                <MaxAutoParticipantIndex>200</MaxAutoParticipantIndex>
-        </Discovery>
+	<Discovery>
+		<Peers>
+			<Peer address="192.168.2.18"/>
+			<Peer address="192.168.2.11"/>
+			<Peer address="192.168.2.12"/>
+		</Peers>
+		<ParticipantIndex>auto</ParticipantIndex>
+		<MaxAutoParticipantIndex>200</MaxAutoParticipantIndex>
+	</Discovery>
         <Internal>
             <SocketReceiveBufferSize min="10MB"/>
             <Watermarks>

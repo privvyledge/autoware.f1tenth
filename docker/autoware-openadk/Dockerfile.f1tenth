@@ -329,11 +329,19 @@ RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install
 RUN cd ${BUILD_HOME}/src && git clone https://github.com/PRBonn/kiss-icp.git
 
 #----------------------------------------------
-# Install ROSBag support
+# Install ROSBag support. Todo: test why this is causing performance issues
+# ros-${ROS_DISTRO}-rosbag2*
 #----------------------------------------------
-RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
-    ros-${ROS_DISTRO}-ros2bag ros-${ROS_DISTRO}-rosbag2* && \
-    sudo rm -rf /var/lib/apt/lists/*
+#RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+#    ros-${ROS_DISTRO}-ros2bag ros-${ROS_DISTRO}-rosbag2-transport && \
+#    sudo rm -rf /var/lib/apt/lists/*
+RUN cd ${BUILD_HOME}/src && git clone https://github.com/ros2/rosbag2.git -b humble
+
+#----------------------------------------------
+# Build RViz for GPU support
+#
+#----------------------------------------------
+RUN cd ${BUILD_HOME}/src && git clone https://github.com/ros2/rviz.git -b humble
 
 #----------------------------------------------
 # Install Cyclone DDS
@@ -476,7 +484,7 @@ RUN echo 'alias build="colcon build --symlink-install  --event-handlers console_
     echo "export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp" >> ~/.bashrc && \
 ##    echo "export RMW_IMPLEMENTATION=rmw_fastrtps_cpp" >> ~/.bashrc && \
 #    echo "export CYCLONEDDS_URI=file://$BUILD_HOME/src/autoware.f1tenth/cyclone_dds/cyclonedds_config.xml" >> ~/.bashrc && \
-#    echo "export FASTRTPS_DEFAULT_PROFILES_FILE=$BUILD_HOME/src/autoware.f1tenth/fast_dds/fastdds_profile.xml" >> ~/.bashrc && \
+#    echo "export FASTRTPS_DEFAULT_PROFILES_FILE=$BUILD_HOME/src/autoware.f1tenth/fast_dds/fastdds_profile_static.xml" >> ~/.bashrc && \
     echo 'export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/cuda/targets/aarch64-linux/lib/stubs:/opt/ros/${ROS_DISTRO}/install/lib' >> ~/.bashrc && \
     echo 'export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib' >> ~/.bashrc && \
     echo 'export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/cuda/lib64:/usr/local/cuda/extras/CUPTI/lib64' >> ~/.bashrc && \
