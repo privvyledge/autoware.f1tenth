@@ -13,7 +13,11 @@ on:
         default: tarball
 
 jobs:
+  load-env:
+    uses: ./.github/workflows/load-env.yaml
+
   build-main-self-hosted:
+    needs: load-env
     runs-on: [self-hosted, linux, ARM64]
     strategy:
       fail-fast: false
@@ -23,11 +27,13 @@ jobs:
           - cuda
         include:
           - name: no-cuda
+            platform: arm64
             base_image_env: base_image
             lib_dir: aarch64
             setup-args: --no-nvidia
             additional-tag-suffix: ""
           - name: cuda
+            platform: arm64
             base_image_env: base_image
             lib_dir: aarch64
             additional-tag-suffix: -cuda
@@ -40,34 +46,30 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Set git config
+        uses: autowarefoundation/autoware-github-actions/set-git-config@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Free disk space
         uses: ./.github/actions/free-disk-space
 
-      - name: Load env
-        run: |
-          cat amd64.env | sed -e "s/^\s*//" -e "/^#/d" >> $GITHUB_ENV
-          if [ "$(uname -m)" = "aarch64" ]; then
-            cat arm64.env | sed -e "s/^\s*//" -e "/^#/d" >> $GITHUB_ENV
-          fi
-
-      - name: Build 'autoware-universe'
+      - name: Build 'Autoware'
         uses: ./.github/actions/docker-build-and-push
         with:
-          bake-target: autoware-openadk
+          bake-target: autoware
           build-args: |
-            *.platform=linux/arm64
-            *.args.ROS_DISTRO=${{ env.rosdistro }}
-            *.args.BASE_IMAGE=${{ env[format('{0}', matrix.base_image_env)] }}
+            *.platform=linux/${{ matrix.platform }}
+            *.args.ROS_DISTRO=${{ needs.load-env.outputs.rosdistro }}
+            *.args.BASE_IMAGE=${{ needs.load-env.outputs[format('{0}', matrix.base_image_env)] }}
             *.args.SETUP_ARGS=${{ matrix.setup-args }}
             *.args.LIB_DIR=${{ matrix.lib_dir }}
+            *.cache-from=type=registry,ref=ghcr.io/${{ github.repository }}-buildcache:${{ matrix.name }}-${{ matrix.platform }}-main
+            *.cache-to=type=registry,ref=ghcr.io/${{ github.repository }}-buildcache:${{ matrix.name }}-${{ matrix.platform }}-main,mode=max
           tag-suffix: ${{ matrix.additional-tag-suffix }}-arm64
-          tag-prefix: ${{ env.rosdistro }}
+          tag-prefix: ${{ needs.load-env.outputs.rosdistro }}
           allow-push: false
 
       - name: Show disk space
         run: |
           df -h
-
-      - name: Show ccache stats
-        run: |
-          ccache -s

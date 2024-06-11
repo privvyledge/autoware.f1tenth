@@ -9,7 +9,7 @@ name: docker-build-and-push-main
 on:
   push:
     tags:
-      - adkit-v*.*.*
+      - openadkit-v*.*.*
     branches:
       - main
   schedule:
@@ -25,7 +25,11 @@ on:
         default: tarball
 
 jobs:
+  load-env:
+    uses: ./.github/workflows/load-env.yaml
+
   docker-build-and-push-main:
+    needs: load-env
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -36,39 +40,42 @@ jobs:
         include:
           - name: no-cuda
             base_image_env: base_image
+            platform: amd64
             lib_dir: x86_64
             setup-args: --no-nvidia
             additional-tag-suffix: ""
           - name: cuda
             base_image_env: base_image
+            platform: amd64
             lib_dir: x86_64
             additional-tag-suffix: -cuda
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Set git config
+        uses: autowarefoundation/autoware-github-actions/set-git-config@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Free disk space
         uses: ./.github/actions/free-disk-space
 
-      - name: Load env
-        run: |
-          cat amd64.env | sed -e "s/^\s*//" -e "/^#/d" >> $GITHUB_ENV
-          if [ "$(uname -m)" = "aarch64" ]; then
-            cat arm64.env | sed -e "s/^\s*//" -e "/^#/d" >> $GITHUB_ENV
-          fi
-
-      - name: Build 'autoware-openadk'
+      - name: Build 'Autoware'
         uses: ./.github/actions/docker-build-and-push
         with:
-          bake-target: autoware-openadk
+          bake-target: autoware
           build-args: |
-            *.platform=linux/amd64
-            *.args.ROS_DISTRO=${{ env.rosdistro }}
-            *.args.BASE_IMAGE=${{ env[format('{0}', matrix.base_image_env)] }}
+            *.platform=linux/${{ matrix.platform }}
+            *.args.ROS_DISTRO=${{ needs.load-env.outputs.rosdistro }}
+            *.args.BASE_IMAGE=${{ needs.load-env.outputs[format('{0}', matrix.base_image_env)] }}
             *.args.SETUP_ARGS=${{ matrix.setup-args }}
             *.args.LIB_DIR=${{ matrix.lib_dir }}
+            *.cache-from=type=registry,ref=ghcr.io/${{ github.repository }}-buildcache:${{ matrix.name }}-${{ matrix.platform }}-${{ github.ref_name }}
+            *.cache-from=type=registry,ref=ghcr.io/${{ github.repository }}-buildcache:${{ matrix.name }}-${{ matrix.platform }}-main
+            *.cache-to=type=registry,ref=ghcr.io/${{ github.repository }}-buildcache:${{ matrix.name }}-${{ matrix.platform }}-${{ github.ref_name }},mode=max
           tag-suffix: ${{ matrix.additional-tag-suffix }}-amd64
-          tag-prefix: ${{ env.rosdistro }}
+          tag-prefix: ${{ needs.load-env.outputs.rosdistro }}
           allow-push: true
 
       - name: Show disk space
