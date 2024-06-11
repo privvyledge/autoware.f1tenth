@@ -30,11 +30,12 @@ ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 
 ## For Jetpack 6.0 DeveloperPreview L4T 36.2.0 and Jetpack 6.0 ProductionRelease 36.3.0
 #ARG L4T_VERSION="36.2"
+#ARG TORCH_INSTALL=https://developer.download.nvidia.com/compute/redist/jp/v60dp/pytorch/torch-2.2.0a0+81ea7a4.nv24.01-cp310-cp310-linux_aarch64.whl
 ARG L4T_VERSION="36.3"
 ARG CUDA=12-2
 ARG cudnn_version=8.9.4.25-1+cuda12.2
 ARG tensorrt_version=8.6.2.3-1+cuda12.2
-ARG TORCH_INSTALL=https://developer.download.nvidia.com/compute/redist/jp/v60dp/pytorch/torch-2.2.0a0+81ea7a4.nv24.01-cp310-cp310-linux_aarch64.whl
+ARG TORCH_INSTALL=https://developer.download.nvidia.com/compute/redist/jp/v60dp/pytorch/torch-2.2.0a0+6a974be.nv23.11-cp310-cp310-linux_aarch64.whl
 
 # Install Sudo
 RUN apt-get update && DEBIAN_FRONTEND="noninteractive" apt-get install -yq sudo tzdata && \
@@ -199,6 +200,7 @@ RUN python3 -m pip install numpy=="1.26.1"
 RUN echo "deb https://repo.download.nvidia.com/jetson/common r${L4T_VERSION} main" >> /etc/apt/sources.list && \
     echo "deb https://repo.download.nvidia.com/jetson/t234 r${L4T_VERSION} main" >> /etc/apt/sources.list && \
     apt-key adv --fetch-key http://repo.download.nvidia.com/jetson/jetson-ota-public.asc && \
+    apt-key adv --fetch-keys http://l4t-repo.nvidia.com/jetson-ota-internal.key && \
     mkdir -p /opt/nvidia/l4t-packages/ && \
     touch /opt/nvidia/l4t-packages/.nv-l4t-disable-boot-fw-update-in-preinstall && \
     rm -f /etc/ld.so.conf.d/nvidia-tegra.conf && apt-get update && \
@@ -245,8 +247,8 @@ RUN apt-get update && DEBIAN_FRONTEND="noninteractive" apt-get install -y --no-i
 #    libnvinfer-headers-plugin-dev && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install Pytorch. todo compile pytorch from sources
-#RUN python3 -m pip install --upgrade --no-cache $TORCH_INSTALL
+# Install Pytorch. todo compile pytorch from source
+RUN python3 -m pip install --upgrade --no-cache $TORCH_INSTALL
 
 #RUN apt-get -y upgrade --allow-downgrades &&  apt-get clean && rm -rf /var/lib/apt/lists/*
 
