@@ -351,7 +351,7 @@ RUN cd ${BUILD_HOME}/src && git clone https://github.com/ros2/rosbag2.git -b hum
 #----------------------------------------------
 RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
     ros-${ROS_DISTRO}-rviz2 ros-${ROS_DISTRO}-rviz-common ros-${ROS_DISTRO}-rviz-visual-tools \
-    ros-${ROS_DISTRO}-rviz-default-plugins ros-${ROS_DISTRO}-vision-msgs-rviz-plugins \
+    ros-${ROS_DISTRO}-rviz-default-plugins ros-${ROS_DISTRO}-vision-msgs-rviz-plugins && \
     sudo rm -rf /var/lib/apt/lists/*
 RUN cd ${BUILD_HOME}/src && git clone https://github.com/ros2/rviz.git -b humble
 
