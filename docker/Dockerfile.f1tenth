@@ -519,7 +519,9 @@ RUN python3 -m pip install -U \
     importlib_resources
 
 # Install VPI
-RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+RUN --mount=type=cache,target=/var/cache/apt \
+    mkdir -p /lib/firmware && \
+    sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
     libnvvpi3 \
     vpi3-dev && sudo rm -rf /var/lib/apt/lists/* \
     && sudo apt-get clean
