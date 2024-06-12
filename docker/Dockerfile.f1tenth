@@ -106,6 +106,9 @@ RUN sudo apt-get update -y && DEBIAN_FRONTEND="noninteractive" sudo apt-get inst
     gstreamer1.0-rtsp && \
     sudo rm -rf /var/lib/apt/lists/*
 
+# Set Python3 as default
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1
+
 # Install Python Packages. Todo: add ultralytics, YOLOv8, YOLOv4, etc. dependencies
 RUN python3 -m pip install do-mpc casadi
 
@@ -254,6 +257,7 @@ RUN cd "$BUILD_HOME/src" && git clone https://github.com/YDLIDAR/ydlidar_ros2_dr
 #    sudo rm -rf /var/lib/apt/lists/*
 
 # todo: set envs above instead of exporting
+# Tested with v2.55.1 and firmware 5.15.1
 # branches R/255, R/2542, master, development, etc
 ARG LIBREALSENSE_BRANCH="master"
 RUN export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/targets/aarch64-linux/lib/stubs:/opt/ros/${ROS_DISTRO}/install/lib && \
@@ -313,6 +317,7 @@ RUN export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/targets/aarch64-linu
 #    mv realsense-ros-${REALSENSE_ROS_VERSION}/ realsense-ros && \
 #    rm ${REALSENSE_ROS_VERSION}.zip
 
+# Tested with version 4.55.1
 RUN cd ${BUILD_HOME}/src && git clone https://github.com/privvyledge/realsense-ros.git
 
 #################################################### Setup RTAB-Map (which also publishes odometry from laser_scan)
@@ -410,39 +415,65 @@ RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install
 #RUN python3 -m pip install open3d
 RUN sudo apt update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends python3-open3d
 
-##--------------------------------
-## Setup NVIDIA Isaac packages
-##--------------------------------
-#RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
-#    python3-distutils \
-#    libboost-all-dev \
-#    libboost-dev \
-#    libpcl-dev \
-#    libode-dev \
-#    lcov \
-#    python3-zmq \
-#    libxaw7-dev \
-#    libgraphicsmagick++1-dev \
-#    graphicsmagick-libmagick-dev-compat \
-#    libceres-dev \
-#    libsuitesparse-dev \
-#    libncurses5-dev \
-#    libassimp-dev \
-#    libyaml-cpp-dev \
-#    libpcap-dev \
-#    && sudo rm -rf /var/lib/apt/lists/* \
-#    && sudo apt-get clean
-#
+#--------------------------------
+# Setup NVIDIA Isaac packages
+#--------------------------------
+RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+    python3-distutils \
+    libboost-all-dev \
+    libboost-dev \
+    libpcl-dev \
+    libode-dev \
+    lcov \
+    python3-zmq \
+    libxaw7-dev \
+    libgraphicsmagick++1-dev \
+    graphicsmagick-libmagick-dev-compat \
+    libceres-dev \
+    libsuitesparse-dev \
+    libncurses5-dev \
+    libassimp-dev \
+    libyaml-cpp-dev \
+    libpcap-dev \
+    && sudo rm -rf /var/lib/apt/lists/* \
+    && sudo apt-get clean
+
+# Install VPI
+RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+    libnvvpi3 \
+    vpi3-dev && sudo rm -rf /var/lib/apt/lists/* \
+    && sudo apt-get clean
+
 ## Add Isaac apt repository
 #RUN wget -qO - https://isaac.download.nvidia.com/isaac-ros/repos.key | apt-key add - && \
 #    grep -qxF 'deb https://isaac.download.nvidia.com/isaac-ros/ubuntu/main focal main' /etc/apt/sources.list || \
 #    echo 'deb https://isaac.download.nvidia.com/isaac-ros/ubuntu/main focal main' | tee -a /etc/apt/sources.list
-#
+
+RUN --mount=type=cache,target=/var/cache/apt \
+    wget -qO - https://isaac.download.nvidia.com/isaac-ros/repos.key | apt-key add - && \
+    grep -qxF "deb https://isaac.download.nvidia.com/isaac-ros/release-3 $(lsb_release -cs) release-3.0" /etc/apt/sources.list || \
+    echo "deb https://isaac.download.nvidia.com/isaac-ros/release-3 $(lsb_release -cs) release-3.0" | tee -a /etc/apt/sources.list \
+    && apt-get update
+
 ## Add Nvidia Isaac dependencies to Rosdep
 #RUN curl -o /etc/ros/rosdep/sources.list.d/nvidia-isaac.yaml https://isaac.download.nvidia.com/isaac-ros/extra_rosdeps.yaml \
 #    && echo "yaml file:///etc/ros/rosdep/sources.list.d/nvidia-isaac.yaml" | tee /etc/ros/rosdep/sources.list.d/00-nvidia-isaac.list
-#
-#RUN cd ${BUILD_HOME}/src && git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_common.git
+
+RUN curl -o /etc/ros/rosdep/sources.list.d/nvidia-isaac.yaml https://raw.githubusercontent.com/NVIDIA-ISAAC-ROS/isaac_ros_common/main/docker/rosdep/extra_rosdeps.yaml \
+    && echo "yaml file:///etc/ros/rosdep/sources.list.d/nvidia-isaac.yaml" | tee /etc/ros/rosdep/sources.list.d/00-nvidia-isaac.list
+
+# Add Isaac ROS packages to be compiled
+RUN cd ${BUILD_HOME}/src && git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_common.git && \
+    git clone --recursive https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_nvblox.git && \
+    cd isaac_ros_nvblox/nvblox_examples/realsense_splitter && git update-index --assume-unchanged COLCON_IGNORE && \
+    rm COLCON_IGNORE
+
+RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+    ros-${ROS_DISTRO}-isaac-ros-visual-slam ros-${ROS_DISTRO}-isaac-ros-examples ros-${ROS_DISTRO}-isaac-ros-realsense \
+    ros-${ROS_DISTRO}-isaac-ros-nvblox
+
+# Temporary variable for ISAAC_ROS_WS. Todo: remove
+ENV ISAAC_ROS_WS=/shared_dir
 
 #--------------------------------
 # Build ROS workspace
