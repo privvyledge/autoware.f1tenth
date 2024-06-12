@@ -66,16 +66,34 @@ RUN sudo apt-get update -y && DEBIAN_FRONTEND="noninteractive" sudo apt-get inst
     python3 \
     python3-pip \
     python3-setuptools \
-    python3-numpy \
+#    python3-numpy \
     python3-rosdep \
-    python3-matplotlib \
-    python3-pil \
+#    python3-matplotlib \
+#    python3-pil \
     python3-yaml \
     python3-tk \
     python3-pyqt5 \
     python3-bloom \
     libssl-dev && \
     sudo rm -rf /var/lib/apt/lists/*
+
+RUN python3 -m pip install -U \
+    Cython \
+    pymongo \
+    wheel \
+    scikit-learn \
+    ninja \
+    networkx \
+    numpy \
+    numpy-quaternion \
+    pyyaml \
+    setuptools_scm>=6.2 \
+    trimesh \
+    yourdfpy>=0.0.53 \
+    warp-lang>=0.9.0 \
+    scipy>=1.7.0 \
+    tqdm \
+    importlib_resources
 
 RUN sudo apt-get update -y && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
     autoconf \
@@ -167,8 +185,8 @@ RUN sudo apt-get update -y && DEBIAN_FRONTEND="noninteractive" sudo apt-get inst
 # todo: downgrade python3 to 3.9 to use python3-libnvinfer python3-libnvinfer-dev
 RUN python3 -m pip install --upgrade pip setuptools
 
-# For Pytorch
-RUN python3 -m pip install numpy=="1.26.1"
+## For Pytorch
+#RUN python3 -m pip install numpy=="1.26.1"
 
 ## download the CUDA Toolkit local installer
 #RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/arm64/cuda-ubuntu2004.pin -O /etc/apt/preferences.d/cuda-repository-pin-600 && \
@@ -213,7 +231,16 @@ RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/arm
     cuda-${CUDA} \
     cuda-compat-${CUDA} \
     cuda-toolkit-${CUDA} \
-    cuda-command-line-tools-${CUDA} && \
+    cuda-command-line-tools-${CUDA} \
+    cuda-cudart-${CUDA} \
+    cuda-libraries-${CUDA} \
+    cuda-nvml-dev-${CUDA} \
+    cuda-sanitizer-${CUDA} \
+    cuda-toolkit-${CUDA} \
+    libcublas-${CUDA} \
+    libcudnn8 \
+    libcusparse-${CUDA} \
+    libnpp-${CUDA} && \
     apt-get clean && rm -rf /var/lib/apt/lists/* cuda-keyring_1.0-1_all.deb
 
 # Install cuDNN
@@ -285,6 +312,6 @@ ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
 
 RUN sudo apt-get update -y && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
-    ros-humble-desktop-full ros-humble-rmw-cyclonedds-cpp
+    ros-humble-ament-cmake ros-humble-ament-cmake-gtest ros-humble-desktop-full ros-humble-rmw-cyclonedds-cpp
 
 WORKDIR /
