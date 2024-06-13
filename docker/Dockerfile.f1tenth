@@ -58,6 +58,7 @@ RUN sudo apt-get update -y && DEBIAN_FRONTEND="noninteractive" sudo apt-get inst
     apt-transport-https \
     openssh-server libv4l-0 libv4l-dev v4l-utils binutils xz-utils bzip2 lbzip2 \
     ca-certificates libegl1 \
+    software-properties-common \
     lsb-release \
     gnupg2 \
     cmake \
@@ -573,10 +574,8 @@ RUN --mount=type=cache,target=/var/cache/apt \
     && rm -rf /tmp/boost*
 
 # Add MQTT binaries and libraries
-RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
-    software-properties-common
 RUN --mount=type=cache,target=/var/cache/apt \
-    apt-add-repository ppa:mosquitto-dev/mosquitto-ppa && \
+    apt-add-repository -y ppa:mosquitto-dev/mosquitto-ppa && \
     sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
     mosquitto \
     mosquitto-clients && sudo rm -rf /var/lib/apt/lists/* \
