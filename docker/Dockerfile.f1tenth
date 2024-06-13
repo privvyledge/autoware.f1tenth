@@ -573,6 +573,8 @@ RUN --mount=type=cache,target=/var/cache/apt \
     && rm -rf /tmp/boost*
 
 # Add MQTT binaries and libraries
+RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+    software-properties-common
 RUN --mount=type=cache,target=/var/cache/apt \
     apt-add-repository ppa:mosquitto-dev/mosquitto-ppa && \
     sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \

@@ -45,6 +45,7 @@ RUN apt-get update && DEBIAN_FRONTEND="noninteractive" apt-get install -yq sudo 
 # Install packages
 RUN sudo apt-get update -y && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
     sudo \
+    software-properties-common \
     git \
     curl \
     wget \
