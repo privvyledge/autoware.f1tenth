@@ -110,6 +110,53 @@ RUN sudo apt-get update -y && DEBIAN_FRONTEND="noninteractive" sudo apt-get inst
     gstreamer1.0-rtsp && \
     sudo rm -rf /var/lib/apt/lists/*
 
+# ROS fundamentals
+RUN --mount=type=cache,target=/var/cache/apt \
+        sudo apt-get update -y && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+        devscripts \
+        dh-make \
+        fakeroot \
+        libxtensor-dev \
+        python3-bloom \
+        python3-colcon-common-extensions \
+        python3-pip \
+        python3-pybind11 \
+        python3-pytest-cov \
+        python3-rosdep \
+        python3-rosinstall-generator \
+        python3-vcstool \
+        python3-colcon-mixin \
+        python3-flake8-docstrings \
+        python3-pip \
+        python3-pytest-cov \
+        ros-dev-tools \
+        python3-flake8-blind-except \
+        python3-flake8-builtins \
+        python3-flake8-class-newline \
+        python3-flake8-comprehensions \
+        python3-flake8-deprecated \
+        python3-flake8-import-order \
+        python3-flake8-quotes \
+        python3-pytest-repeat \
+        python3-pytest-rerunfailures \
+        quilt
+
+# ROS Python fundamentals
+RUN python3 -m pip install -U \
+        flake8-blind-except \
+        flake8-builtins \
+        flake8-class-newline \
+        flake8-comprehensions \
+        flake8-deprecated \
+        flake8-docstrings \
+        flake8-import-order \
+        flake8-quotes \
+        numpy>=1.24.4 \
+        matplotlib \
+        pandas \
+        rosbags \
+        setuptools==65.7.0
+
 # Set Python3 as default
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1
 
@@ -354,7 +401,7 @@ RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install
     ros-${ROS_DISTRO}-rviz2 ros-${ROS_DISTRO}-rviz-common ros-${ROS_DISTRO}-rviz-visual-tools \
     ros-${ROS_DISTRO}-rviz-default-plugins ros-${ROS_DISTRO}-vision-msgs-rviz-plugins && \
     sudo rm -rf /var/lib/apt/lists/*
-RUN cd ${BUILD_HOME}/src && git clone https://github.com/ros2/rviz.git -b humble
+#RUN cd ${BUILD_HOME}/src && git clone https://github.com/ros2/rviz.git -b humble
 
 #----------------------------------------------
 # Install Cyclone DDS
@@ -609,6 +656,20 @@ WORKDIR $BUILD_HOME
 #ARG MAKEFLAGS="-j4 -l4"
 ARG SKIPPED_ROSDEP_KEYS="cmake_modules pacmod3_msgs  python3-open3d \
     librealsense2 realsense2_camera libopencv-dev  libopencv-contrib-dev libopencv-imgproc-dev python-opencv python3-opencv"
+
+################ Temporarily setup autoware f1tenth_humble branch. todo: remove
+RUN cd $BUILD_HOME/src && rm -rf autoware.f1tenth && rm -rf f1tenth_autoware_launch_py && \
+    git clone https://github.com/autowarefoundation/autoware.git -b f1tenth_humble && cd autoware && mkdir src  && \
+    vcs import src < autoware.repos
+
+#### (Temporary) fix opencv installation issues. Todo: remove
+#RUN sudo apt update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+#    ros-humble-desktop-full
+#ARG SKIPPED_ROSDEP_KEYS="cmake_modules pacmod3_msgs  python3-open3d \
+#    librealsense2 realsense2_camera"
+
+################# Temporarily remove autoware f1tenth_humble branch. Todo: remove
+#RUN cd $BUILD_HOME/src && rm -rf autoware
 
 RUN sudo apt update && \
     rosdep update && \
