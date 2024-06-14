@@ -199,13 +199,21 @@ RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install
 #    sudo rm -rf /var/lib/apt/lists/*
 
 #-------------------------------------------------
-# Setup Spatio Temporal Voxel Layer (STVL) and other voxel packages for 3D occupancy representation.
+# Setup Spatio Temporal Voxel Layer (STVL) and other voxel packages for 3D occupancy representation. Can install from debs if 1 hour compile time is too long.
 #-------------------------------------------------
 #RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
-#    ros-${ROS_DISTRO}-spatio-temporal-voxel-layer ros-${ROS_DISTRO}-nonpersistent-voxel-layer
+#    ros-${ROS_DISTRO}-spatio-temporal-voxel-layer
 RUN cd "${BUILD_HOME}/src" && \
-    git clone -b ros2 https://github.com/SteveMacenski/spatio_temporal_voxel_layer.git && \
-    git clone -b ros2 https://github.com/SteveMacenski/nonpersistent_voxel_layer.git
+    git clone -b ros2 https://github.com/SteveMacenski/spatio_temporal_voxel_layer.git
+
+#-------------------------------------------------
+# Setup non-persistent voxel layer. Todo: use ros2 branch when bad commit is fixed
+#-------------------------------------------------
+#RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+#    ros-${ROS_DISTRO}-nonpersistent-voxel-layer
+RUN cd "${BUILD_HOME}/src" && \
+    git clone -b 2.4.0 https://github.com/SteveMacenski/nonpersistent_voxel_layer.git
+#    git checkout 27c81cb90f329eda0d2e3760348c736fea0a975f
 
 #################################################### (Optional) Setup SLAM toolbox. Use galactic and above (or noetic) to get pose
 RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
