@@ -151,7 +151,7 @@ RUN python3 -m pip install -U \
         flake8-docstrings \
         flake8-import-order \
         flake8-quotes \
-        numpy>=1.24.4 \
+        "numpy>=1.24.4" \
         matplotlib \
         pandas \
         rosbags \
@@ -258,11 +258,11 @@ RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install
     ros-${ROS_DISTRO}-image-pipeline && \
     sudo rm -rf /var/lib/apt/lists/*
 
-#-------------------------------------------------
-# Setup MicroROS (https://github.com/micro-ROS/micro_ros_setup.git | https://micro.ros.org/docs/tutorials/core/first_application_linux/)
-#-------------------------------------------------
-RUN git clone -b ${ROS_DISTRO} https://github.com/micro-ROS/micro_ros_setup.git micro_ros_setup && \
-    python3 -m pip install pyserial
+##-------------------------------------------------
+## Setup MicroROS (https://github.com/micro-ROS/micro_ros_setup.git | https://micro.ros.org/docs/tutorials/core/first_application_linux/)
+##-------------------------------------------------
+#RUN git clone -b ${ROS_DISTRO} https://github.com/micro-ROS/micro_ros_setup.git micro_ros_setup && \
+#    python3 -m pip install pyserial
 
 #-------------------------------------------------
 # Setup Autoware.
@@ -679,6 +679,9 @@ RUN cd $BUILD_HOME/src && rm -rf autoware.f1tenth && rm -rf f1tenth_autoware_lau
 ################# Temporarily remove autoware f1tenth_humble branch. Todo: remove
 #RUN cd $BUILD_HOME/src && rm -rf autoware
 
+######## (optional) Disable git warnings
+RUN python3 -m pip uninstall -y setuptools-scm
+
 RUN sudo apt update && \
     rosdep update && \
     source /opt/ros/${ROS_DISTRO}/setup.bash && \
@@ -687,13 +690,13 @@ RUN sudo apt update && \
 RUN source /opt/ros/${ROS_DISTRO}/setup.bash && \
     colcon build --symlink-install --event-handlers console_direct+ --base-paths src --cmake-args '  -Wno-dev' ' --no-warn-unused-cli' ' -DBUILD_ACCELERATE_GPU_WITH_GLSL=OFF' ' -DCMAKE_BUILD_TYPE=Release' ' -DCMAKE_EXPORT_COMPILE_COMMANDS=ON' ' -DCMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs' ' -DCMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined"  -DDOWNLOAD_ARTIFACTS=ON'
 
-#-----------------------------
-# Setup microros agent, i.e create_agent_ws, then build_agent. Modified to skip rosdep keys and specify colcon build arguments
-#-----------------------------
-RUN bash -c 'source install/setup.bash; \
-             EXTERNAL_SKIP=${SKIPPED_ROSDEP_KEYS}; \
-             ros2 run micro_ros_setup create_agent_ws.sh; \
-             ros2 run micro_ros_setup build_agent.sh'
+##-----------------------------
+## Setup microros agent, i.e create_agent_ws, then build_agent. Modified to skip rosdep keys and specify colcon build arguments
+##-----------------------------
+#RUN bash -c 'source install/setup.bash; \
+#             EXTERNAL_SKIP=${SKIPPED_ROSDEP_KEYS}; \
+#             ros2 run micro_ros_setup create_agent_ws.sh; \
+#             ros2 run micro_ros_setup build_agent.sh'
 
 #-----------------------------
 # Setup environment variables
