@@ -1,8 +1,8 @@
 # To build Pytorch (https://qengineering.eu/install-pytorch-on-jetson-nano.html | https://github.com/dusty-nv/jetson-containers/blob/master/packages/pytorch/build.sh | https://github.com/hillct/jetson-containers-extra/blob/develop/Dockerfile)
 # ros:humble-ros-base-jammy, ros:humble-perception-jammy
 #FROM ubuntu:jammy
-#FROM ros:humble-ros-base-jammy
-FROM ros:humble-perception-jammy
+FROM ros:humble-ros-base-jammy
+#FROM ros:humble-perception-jammy
 
 # Set up the shell
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
@@ -286,7 +286,7 @@ ENV LD_LIBRARY_PATH="/usr/local/cuda/compat:/usr/local/cuda/lib64:${LD_LIBRARY_P
 ENV OPENBLAS_CORETYPE=ARMV8
 #export PATH=/usr/local/cuda-12.4/bin${PATH:+:${PATH}}
 
-## Install ROS. todo
+## Install ROS for non-ROS base packages. todo
 #ENV LANG en_US.UTF-8
 #RUN apt update && DEBIAN_FRONTEND="noninteractive" apt-get install -y --no-install-recommends \
 #    locales && \
@@ -313,6 +313,10 @@ ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
 
 RUN sudo apt-get update -y && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
-    ros-humble-ament-cmake ros-humble-ament-cmake-gtest ros-humble-desktop-full ros-humble-rmw-cyclonedds-cpp
+    ros-humble-ament-cmake ros-humble-ament-cmake-gtest ros-humble-rmw-cyclonedds-cpp
+
+## Install the complete ROS package. Disabled as it installs unused packages and takes up a lot of space.
+#RUN sudo apt-get update -y && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+#    ros-humble-desktop-full
 
 WORKDIR /

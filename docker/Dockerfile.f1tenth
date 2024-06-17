@@ -1,3 +1,4 @@
+# todo: install OpenCV and Open3D with CUDA, install ultralytics and ros wrappers.
 #FROM privvyledge/ros:humble-desktop-full-cuda-11-8
 FROM privvyledge/ros:humble-desktop-full-cuda-12-2
 
@@ -62,6 +63,7 @@ RUN sudo apt-get update -y && DEBIAN_FRONTEND="noninteractive" sudo apt-get inst
     lsb-release \
     gnupg2 \
     cmake \
+    ccache \
     pkg-config \
     swig \
     g++ \
@@ -155,7 +157,7 @@ RUN python3 -m pip install -U \
         matplotlib \
         pandas \
         rosbags \
-        setuptools==65.7.0
+        "setuptools==65.7.0"
 
 # Set Python3 as default
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1
@@ -170,6 +172,10 @@ ARG BUILD_HOME=$BUILD_HOME
 RUN mkdir -p "$BUILD_HOME/src"
 
 WORKDIR $BUILD_HOME/src
+
+########################################## Fix bluetooth issues
+#RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+#    libspnav-dev libbluetooth-dev libcwiid1 libcwiid-dev
 
 #################################################### Setup TF2 and Geometry2
 RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
@@ -397,13 +403,13 @@ RUN cd ${BUILD_HOME}/src && git clone https://github.com/PRBonn/kiss-icp.git
 # ros-${ROS_DISTRO}-rosbag2*
 #----------------------------------------------
 #RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
-#    ros-${ROS_DISTRO}-rosbag2 ros-${ROS_DISTRO}-rosbag2-compression-zstd ros-${ROS_DISTRO}-rosbag2-cpp ros-${ROS_DISTRO}-rosbag2-cpp \
+#    ros-${ROS_DISTRO}-rosbag2 ros-${ROS_DISTRO}-rosbag2-compression-zstd ros-${ROS_DISTRO}-rosbag2-cpp ros-${ROS_DISTRO}-rosbag2-py \
 #    ros-${ROS_DISTRO}-ros2bag ros-${ROS_DISTRO}-rosbag2-storage-mcap ros-${ROS_DISTRO}-rosbag2-transport && \
 #    sudo rm -rf /var/lib/apt/lists/*
 RUN cd ${BUILD_HOME}/src && git clone https://github.com/ros2/rosbag2.git -b humble
 
 #----------------------------------------------
-# Build RViz for GPU support
+# Install/build RViz
 #----------------------------------------------
 RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
     ros-${ROS_DISTRO}-rviz2 ros-${ROS_DISTRO}-rviz-common ros-${ROS_DISTRO}-rviz-visual-tools \
@@ -504,9 +510,9 @@ RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install
     && sudo rm -rf /var/lib/apt/lists/* \
     && sudo apt-get clean
 
-# Core dev libraries
+# Core dev libraries. Pass "--allow-downgrades" to downgrade Opencv from 4.8.* to 4.5.4
 RUN --mount=type=cache,target=/var/cache/apt \
-    sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+    sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install --allow-downgrades -y --no-install-recommends \
     ffmpeg \
     gfortran \
     graphicsmagick-libmagick-dev-compat \
@@ -555,7 +561,7 @@ RUN --mount=type=cache,target=/var/cache/apt \
     && sudo rm -rf /var/lib/apt/lists/* \
     && sudo apt-get clean
 
-# Additional Python dependencies
+# Additional Python dependencies. Try with -U flag
 RUN python3 -m pip install -U \
     Cython \
     pymongo \
@@ -563,14 +569,14 @@ RUN python3 -m pip install -U \
     scikit-learn \
     ninja \
     networkx \
-    numpy \
+    "numpy==1.26.4" \
     numpy-quaternion \
     pyyaml \
-    setuptools_scm>=6.2 \
+    "setuptools_scm>=6.2" \
     trimesh \
-    yourdfpy>=0.0.53 \
-    warp-lang>=0.9.0 \
-    scipy>=1.7.0 \
+    "yourdfpy>=0.0.53" \
+    "warp-lang>=0.9.0" \
+    "scipy>=1.7.0" \
     tqdm \
     importlib_resources
 
@@ -602,13 +608,29 @@ RUN curl -o /etc/ros/rosdep/sources.list.d/nvidia-isaac.yaml https://raw.githubu
 
 # Add Isaac ROS packages to be compiled
 RUN cd ${BUILD_HOME}/src && git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_common.git && \
+    git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_image_pipeline.git && \
+#    git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_dnn_stereo_depth.git && \
+#    git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_visual_slam.git && \
     git clone --recursive https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_nvblox.git && \
     cd isaac_ros_nvblox/nvblox_examples/realsense_splitter && git update-index --assume-unchanged COLCON_IGNORE && \
     rm COLCON_IGNORE
 
+################################ Alternatively, install packages from Debians
 RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
-    ros-${ROS_DISTRO}-isaac-ros-visual-slam ros-${ROS_DISTRO}-isaac-ros-examples ros-${ROS_DISTRO}-isaac-ros-realsense \
-    ros-${ROS_DISTRO}-isaac-ros-nvblox
+    ros-${ROS_DISTRO}-isaac-ros-visual-slam \
+#    ros-${ROS_DISTRO}-isaac-ros-nvblox \
+    ros-${ROS_DISTRO}-isaac-ros-examples && sudo rm -rf /var/lib/apt/lists/* \
+    && sudo apt-get clean
+
+#--------------------------------
+# Install Nvidia Isaac Realsense dependencies
+# Note: do not install "ros-${ROS_DISTRO}-isaac-ros-realsense" as it installs realsense libraries which causes realsense failure.
+#--------------------------------
+RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+    ros-humble-gxf-isaac-depth-image-proc ros-humble-gxf-isaac-point-cloud ros-humble-gxf-isaac-ros-messages \
+    ros-humble-gxf-isaac-sgm ros-humble-gxf-isaac-utils \
+    ros-humble-isaac-ros-stereo-image-proc ros-humble-isaac-ros-depth-image-proc \
+    ros-humble-isaac-ros-nitros-disparity-image-type ros-humble-isaac-ros-nitros-point-cloud-type
 
 # Install paho-mqtt for isaac_ros_mission_client
 RUN python3 -m pip install -U \
@@ -617,16 +639,16 @@ RUN python3 -m pip install -U \
 # Temporary variable for ISAAC_ROS_WS. Todo: remove
 ENV ISAAC_ROS_WS=/shared_dir
 
-# Install boost version >= 1.78 for boost::span
-# Current libboost-dev apt packages are < 1.78, so install from tar.gz
-RUN --mount=type=cache,target=/var/cache/apt \
-    wget -O /tmp/boost.tar.gz \
-    https://boostorg.jfrog.io/artifactory/main/release/1.80.0/source/boost_1_80_0.tar.gz \
-    && (cd /tmp && tar xzf boost.tar.gz) \
-    && cd /tmp/boost_1_80_0 \
-    && ./bootstrap.sh --prefix=/usr \
-    && ./b2 install \
-    && rm -rf /tmp/boost*
+## (optional) Install boost version >= 1.78 for boost::span needed by Nvidia Isaac ROS but causes compilation failure for Autoware
+## Current libboost-dev apt packages are < 1.78, so install from tar.gz
+#RUN --mount=type=cache,target=/var/cache/apt \
+#    wget -O /tmp/boost.tar.gz \
+#    https://boostorg.jfrog.io/artifactory/main/release/1.80.0/source/boost_1_80_0.tar.gz \
+#    && (cd /tmp && tar xzf boost.tar.gz) \
+#    && cd /tmp/boost_1_80_0 \
+#    && ./bootstrap.sh --prefix=/usr \
+#    && ./b2 install \
+#    && rm -rf /tmp/boost*
 
 # Add MQTT binaries and libraries
 RUN --mount=type=cache,target=/var/cache/apt \
@@ -665,21 +687,12 @@ WORKDIR $BUILD_HOME
 ARG SKIPPED_ROSDEP_KEYS="cmake_modules pacmod3_msgs  python3-open3d \
     librealsense2 realsense2_camera libopencv-dev  libopencv-contrib-dev libopencv-imgproc-dev python-opencv python3-opencv"
 
-################ Temporarily setup autoware f1tenth_humble branch. todo: remove
-RUN cd $BUILD_HOME/src && rm -rf autoware.f1tenth && rm -rf f1tenth_autoware_launch_py && \
-    git clone https://github.com/autowarefoundation/autoware.git -b f1tenth_humble && cd autoware && mkdir src  && \
-    vcs import src < autoware.repos
+################# Temporarily setup autoware f1tenth_humble branch. todo: remove
+#RUN cd $BUILD_HOME/src && rm -rf autoware.f1tenth && rm -rf f1tenth_autoware_launch_py && \
+#    git clone https://github.com/autowarefoundation/autoware.git -b f1tenth_humble && cd autoware && mkdir src  && \
+#    vcs import src < autoware.repos
 
-#### (Temporary) fix opencv installation issues. Todo: remove
-#RUN sudo apt update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
-#    ros-humble-desktop-full
-#ARG SKIPPED_ROSDEP_KEYS="cmake_modules pacmod3_msgs  python3-open3d \
-#    librealsense2 realsense2_camera"
-
-################# Temporarily remove autoware f1tenth_humble branch. Todo: remove
-#RUN cd $BUILD_HOME/src && rm -rf autoware
-
-######## (optional) Disable git warnings
+######## (optional) Disable git warnings. Or downgrade to version setuptools_scm==5.0.0
 RUN python3 -m pip uninstall -y setuptools-scm
 
 RUN sudo apt update && \
@@ -687,8 +700,24 @@ RUN sudo apt update && \
     source /opt/ros/${ROS_DISTRO}/setup.bash && \
     rosdep install --from-paths src --ignore-src -r -y -q --os=ubuntu:jammy --rosdistro=humble --skip-keys "${SKIPPED_ROSDEP_KEYS}"
 
+########### (optional since compilation is still successfull without it as most/if not all dependencies are installed) install Autoware dependencies. Could skip keys as well
+#RUN cd $BUILD_HOME/src/autoware.f1tenth && \
+#    rosdep keys --ignore-src --from-paths src | xargs rosdep resolve --rosdistro ${ROS_DISTRO} | grep -v '^#' | sed 's/ \+/\n/g' | sort > $BUILD_HOME/src/autoware.f1tenth/rosdep-all-depend-packages.txt && \
+#    rosdep keys --dependency-types=exec --ignore-src --from-paths src | xargs rosdep resolve --rosdistro ${ROS_DISTRO} | grep -v '^#' | sed 's/ \+/\n/g' | sort > $BUILD_HOME/src/autoware.f1tenth/rosdep-exec-depend-packages.txt && \
+#    cat $BUILD_HOME/src/autoware.f1tenth/rosdep-all-depend-packages.txt | xargs apt-get install -y --no-install-recommends && \
+#    cat $BUILD_HOME/src/autoware.f1tenth/rosdep-exec-depend-packages.txt | xargs apt-get install -y --no-install-recommends && \
+#    apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/* "$HOME"/.cache && \
+#    rm $BUILD_HOME/src/autoware.f1tenth/rosdep-all-depend-packages.txt $BUILD_HOME/src/autoware.f1tenth/rosdep-exec-depend-packages.txt
+
+########### Build ROS2 workspace
 RUN source /opt/ros/${ROS_DISTRO}/setup.bash && \
-    colcon build --symlink-install --event-handlers console_direct+ --base-paths src --cmake-args '  -Wno-dev' ' --no-warn-unused-cli' ' -DBUILD_ACCELERATE_GPU_WITH_GLSL=OFF' ' -DCMAKE_BUILD_TYPE=Release' ' -DCMAKE_EXPORT_COMPILE_COMMANDS=ON' ' -DCMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs' ' -DCMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined"  -DDOWNLOAD_ARTIFACTS=ON'
+    colcon build --symlink-install --event-handlers console_direct+ --base-paths src --cmake-args \
+    ' -Wno-dev' ' --no-warn-unused-cli' \
+    ' -DBUILD_ACCELERATE_GPU_WITH_GLSL=OFF' \
+    ' -DCMAKE_BUILD_TYPE=Release' ' -DCMAKE_EXPORT_COMPILE_COMMANDS=ON' \
+    ' -DCMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs' \
+    ' -DCMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined"  -DDOWNLOAD_ARTIFACTS=ON' \
+    --mixin release compile-commands ccache
 
 ##-----------------------------
 ## Setup microros agent, i.e create_agent_ws, then build_agent. Modified to skip rosdep keys and specify colcon build arguments
