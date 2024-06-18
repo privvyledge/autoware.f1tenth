@@ -143,7 +143,7 @@ RUN --mount=type=cache,target=/var/cache/apt \
         python3-pytest-rerunfailures \
         quilt
 
-# ROS Python fundamentals
+# ROS Python fundamentals. The -U flag will update numpy but downstream commands will install 1.26.6
 RUN python3 -m pip install -U \
         flake8-blind-except \
         flake8-builtins \
@@ -441,9 +441,11 @@ RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install
 #RUN cd ${BUILD_HOME}/src && git clone https://github.com/naoki-mizuno/ds4_driver.git
 
 #----------------------------------------------
-# YOLOv8 nodes. todo: verify if downloading Arial.ttf* is necessary
+# Todo: install tensorflow, keras, (opencv), etc. using dusty_nv's jetson containers
+# Install YOLOv8 and corresponding ROS nodes
+# YOLOv8 nodes.
+# Downgrade numpy to 1.23.5 if np.bool depracation errors occure
 # Note that downgrading numpy might cause issues with other python packages, i.e onnxruntime-gpu and tensorflow as they require higher numpy versions. Could use a pytorch only base image instead.
-
 # To export to tensorrt
 # Using the command line:
 # Using python: python3 -c "from ultralytics import YOLO;model = YOLO('yolov8s.pt');model.export(format='engine', half=True, simplify=True)"
@@ -456,19 +458,35 @@ RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install
 # ros2 launch ultralytics_ros tracker_with_cloud.launch.xml debug:=false input_topic:=/camera/camera/color/image_raw yolo_model:=yolov8m-seg.pt camera_info_topic:=/camera/camera/color/camera_info lidar_topic:=/camera/camera/depth/color/points yolo_result_topic:=/yolo/realsense/rgb yolo_3d_result_topic:=/yolo/realsense_3d_result cluster_tolerance:=0.3  voxel_leaf_size:=0.1 min_cluster_size:=100 max_cluster_size:=10000
 # ros2 launch yolov8_bringup yolov8_3d.launch.py model:=yolov8m-seg.pt input_image_topic:=/camera/camera/color/image_raw input_depth_topic:=/camera/camera/depth/image_rect_raw input_depth_info_topic:=/camera/camera/depth/camera_info target_frame:=camera_link
 #----------------------------------------------
-## Install ultralytics
-#RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
-#    git-lfs gcc git zip curl htop libgl1 libglib2.0-0 libpython3-dev gnupg g++ libusb-1.0-0 && \
+# (optionally) download fonts
+ADD https://github.com/ultralytics/assets/releases/download/v0.0.0/Arial.ttf \
+    https://github.com/ultralytics/assets/releases/download/v0.0.0/Arial.Unicode.ttf \
+    /root/.config/Ultralytics/
+
+# Install ultralytics YOLOv8. Tested with version v8.2.35.
+# Jetson ONNX Runtimes (https://elinux.org/Jetson_Zoo#ONNX_Runtime). Onnx Runtime 1.18.0 for python 3.10
+# optional python versions. numpy==1.23.5 onnx==1.14.0 urllib3==1.26.18 Bottleneck==1.3.4
+# todo: compile with cd /sdks/ultralytics/ && python3 -m pip install --no-cache-dir -e ".[export]" && \ after installing tensorflow
+RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+    git-lfs gcc git zip curl htop libgl1 libglib2.0-0 libpython3-dev gnupg g++ libusb-1.0-0 && \
 #    mkdir -p /root/.config/Ultralytics && cd /root/.config/Ultralytics && wget https://github.com/ultralytics/assets/releases/download/v0.0.0/Arial.ttf && wget https://github.com/ultralytics/assets/releases/download/v0.0.0/Arial.Unicode.ttf && \
-#    cd /sdks && git clone https://github.com/ultralytics/ultralytics && \
-#    cd ultralytics &&  grep -v "opencv-python" pyproject.toml > temp.toml && mv temp.toml pyproject.toml && \
-#    python3 -m pip install --upgrade pip wheel && \
-#    python3 -m pip install lap==0.4.0 numpy==1.23.5 typing-extensions>=4.4.0 Bottleneck==1.3.4 onnxsim>=0.4.33 && \
-#    cd /sdks/ultralytics/ && pip install --no-cache -e . && \
-##    export OMP_NUM_THREADS=1 && \
-#    cd ${BUILD_HOME}/src && GIT_LFS_SKIP_SMUDGE=1 git clone -b humble-devel https://github.com/Alpaca-zip/ultralytics_ros.git && \
-#    git clone https://github.com/mgonzs13/yolov8_ros.git && \
-#    sudo rm -rf /var/lib/apt/lists/* \
+    cd /sdks && git clone https://github.com/ultralytics/ultralytics && \
+    cd ultralytics &&  grep -v "opencv-python" pyproject.toml > temp.toml && mv temp.toml pyproject.toml && \
+    wget https://nvidia.box.com/shared/static/48dtuob7meiw6ebgfsfqakc9vse62sg4.whl -O /tmp/onnxruntime_gpu-1.18.0-cp310-cp310-linux_aarch64.whl && \
+    python3 -m pip install /tmp/onnxruntime_gpu-1.18.0-cp310-cp310-linux_aarch64.whl && \
+    python3 -m pip install --upgrade pip wheel && \
+    python3 -m pip install lap==0.4.0 typing-extensions>=4.4.0 onnx==1.14.0 Bottleneck==1.3.6 onnxsim>=0.4.33 numexpr==2.8.4 && \
+#    cd /sdks/ultralytics/ && python3 -m pip install --no-cache-dir -e ".[export]" && \
+    cd /sdks/ultralytics/ && python3 -m pip install --no-cache -e . && \
+    python3 -m pip install "numpy==1.26.4"
+#    export OMP_NUM_THREADS=1 && \
+
+#----------------------------------
+# Install YOLOv8 ROS packages
+#----------------------------------
+RUN cd ${BUILD_HOME}/src && GIT_LFS_SKIP_SMUDGE=1 git clone -b humble-devel https://github.com/Alpaca-zip/ultralytics_ros.git && \
+    git clone https://github.com/mgonzs13/yolov8_ros.git && \
+    sudo rm -rf /var/lib/apt/lists/*
 
 #----------------------------------------------
 # Install Apriltag
@@ -482,8 +500,33 @@ RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install
 # To build, see https://www.open3d.org/docs/release/arm.html#building-open3d-python-wheel-with-docker
 # todo: compile from source with CUDA support
 #-----------------------------------------------
+# Todo: test Open3D and Open3D ML with cuda 12.2 then Install CUDA 11.8 if it fails
+#RUN sudo apt update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+#    cuda-11-8 cuda-toolkit-11-8 cuda-compat-11-8 cuda-cudart-11-8 cuda-libraries-11-8
+
 #RUN python3 -m pip install open3d
-RUN sudo apt update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends python3-open3d
+#RUN sudo apt update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends python3-open3d
+# Todo: test realsense support
+RUN cd /sdks && git clone https://github.com/isl-org/Open3D.git && \
+    cd Open3D && \
+    ./util/install_deps_ubuntu.sh assume-yes && \
+    mkdir build && cd build && git clone https://github.com/isl-org/Open3D-ML.git && \
+#    export PATH=${PATH}:/usr/local/cuda-12.2/bin && export CUDACXX=/usr/local/cuda-12.2/bin/nvcc && \
+    cmake -DBUILD_CUDA_MODULE=ON \
+      -DBUILD_GUI=ON \
+#      -DGLIBCXX_USE_CXX11_ABI=OFF \
+      -DBUILD_PYTORCH_OPS=ON \
+      -DBUILD_TENSORFLOW_OPS=OFF \
+      -DBUNDLE_OPEN3D_ML=ON \
+      -DBUILD_LIBREALSENSE=OFF \
+#      -DBUILD_JUPYTER_EXTENSION:BOOL=TRUE \
+#      -DBUILD_WEBRTC=ON \
+      -DCMAKE_INSTALL_PREFIX=/sdks/open3d_install \
+      -DPython3_ROOT=/usr/bin/python3 \
+      -DOPEN3D_ML_ROOT=Open3D-ML \
+      .. && \
+    make -j$(nproc) && \
+    make install-pip-package
 
 #--------------------------------
 # Setup NVIDIA Isaac packages
@@ -606,9 +649,9 @@ RUN --mount=type=cache,target=/var/cache/apt \
 RUN curl -o /etc/ros/rosdep/sources.list.d/nvidia-isaac.yaml https://raw.githubusercontent.com/NVIDIA-ISAAC-ROS/isaac_ros_common/main/docker/rosdep/extra_rosdeps.yaml \
     && echo "yaml file:///etc/ros/rosdep/sources.list.d/nvidia-isaac.yaml" | tee /etc/ros/rosdep/sources.list.d/00-nvidia-isaac.list
 
-# Add Isaac ROS packages to be compiled
+# Add Isaac ROS packages to be compiled.
 RUN cd ${BUILD_HOME}/src && git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_common.git && \
-    git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_image_pipeline.git && \
+#    git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_image_pipeline.git && \
 #    git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_dnn_stereo_depth.git && \
 #    git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_visual_slam.git && \
     git clone --recursive https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_nvblox.git && \
@@ -692,8 +735,8 @@ ARG SKIPPED_ROSDEP_KEYS="cmake_modules pacmod3_msgs  python3-open3d \
 #    git clone https://github.com/autowarefoundation/autoware.git -b f1tenth_humble && cd autoware && mkdir src  && \
 #    vcs import src < autoware.repos
 
-######## (optional) Disable git warnings. Or downgrade to version setuptools_scm==5.0.0
-RUN python3 -m pip uninstall -y setuptools-scm
+######### (optional) Disable git warnings. Or downgrade to version setuptools_scm==5.0.0
+#RUN python3 -m pip uninstall -y setuptools-scm
 
 RUN sudo apt update && \
     rosdep update && \
