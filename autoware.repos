@@ -80,7 +80,7 @@ repositories:
     version: master
   universe/external/trajectory_loader:
     type: git
-    url: https://github.com/PPI-PUT/trajectory_loader.git
+    url: https://github.com/privvyledge/trajectory_loader.git
     version: master
   universe/external/pgm_to_lanelet:
     type: git
