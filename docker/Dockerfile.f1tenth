@@ -154,7 +154,7 @@ RUN python3 -m pip install -U \
         flake8-docstrings \
         flake8-import-order \
         flake8-quotes \
-        "numpy>=1.24.4" \
+        "numpy==1.26.4" \
         matplotlib \
         pandas \
         rosbags \
