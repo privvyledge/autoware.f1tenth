@@ -206,12 +206,12 @@ RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install
 #    sudo rm -rf /var/lib/apt/lists/*
 
 #-------------------------------------------------
-# Setup Spatio Temporal Voxel Layer (STVL) and other voxel packages for 3D occupancy representation. Can install from debs if 1 hour compile time is too long.
+# Setup Spatio Temporal Voxel Layer (STVL) and other voxel packages for 3D occupancy representation. Can install from debs if 3+ hours compile time is too long.
 #-------------------------------------------------
-#RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
-#    ros-${ROS_DISTRO}-spatio-temporal-voxel-layer
-RUN cd "${BUILD_HOME}/src" && \
-    git clone -b ros2 https://github.com/SteveMacenski/spatio_temporal_voxel_layer.git
+RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+    ros-${ROS_DISTRO}-spatio-temporal-voxel-layer
+#RUN cd "${BUILD_HOME}/src" && \
+#    git clone -b ros2 https://github.com/SteveMacenski/spatio_temporal_voxel_layer.git
 
 #-------------------------------------------------
 # Setup non-persistent voxel layer. Todo: use ros2 branch when bad commit is fixed
