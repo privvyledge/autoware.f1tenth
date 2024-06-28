@@ -662,6 +662,7 @@ RUN cd ${BUILD_HOME}/src && git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_
 #    git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_image_pipeline.git && \
 #    git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_dnn_stereo_depth.git && \
 #    git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_visual_slam.git && \
+#    git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_map_localization.git && \
     git clone --recursive https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_nvblox.git && \
     cd isaac_ros_nvblox/nvblox_examples/realsense_splitter && git update-index --assume-unchanged COLCON_IGNORE && \
     rm COLCON_IGNORE
@@ -670,6 +671,7 @@ RUN cd ${BUILD_HOME}/src && git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_
 RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
     ros-${ROS_DISTRO}-isaac-ros-visual-slam \
 #    ros-${ROS_DISTRO}-isaac-ros-nvblox \
+    ros-${ROS_DISTRO}-isaac-ros-occupancy-grid-localizer \
     ros-${ROS_DISTRO}-isaac-ros-examples && sudo rm -rf /var/lib/apt/lists/* \
     && sudo apt-get clean
 
@@ -764,7 +766,7 @@ RUN sudo apt update && \
 RUN source /opt/ros/${ROS_DISTRO}/setup.bash && \
     colcon build --symlink-install --event-handlers console_direct+ --base-paths src --cmake-args \
     ' -Wno-dev' ' --no-warn-unused-cli' \
-    ' -DBUILD_ACCELERATE_GPU_WITH_GLSL=OFF' \
+    ' -DBUILD_ACCELERATE_GPU_WITH_GLSL=ON' \
     ' -DCMAKE_BUILD_TYPE=Release' ' -DCMAKE_EXPORT_COMPILE_COMMANDS=ON' \
     ' -DCMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs' \
     ' -DCMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined"  -DDOWNLOAD_ARTIFACTS=ON' \

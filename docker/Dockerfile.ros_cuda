@@ -28,6 +28,7 @@ ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 #ARG cudnn_version=8.6.0.166-1+cuda11.4
 #ARG tensorrt_version=8.5.2-1+cuda11.4
 #ARG TORCH_INSTALL=https://developer.download.nvidia.cn/compute/redist/jp/v512/pytorch/torch-2.1.0a0+41361538.nv23.06-cp38-cp38-linux_aarch64.whl
+#ARG TENSORFLOW_INSTALL=https://developer.download.nvidia.com/compute/redist/jp/v51/tensorflow/tensorflow-2.11.0+nv23.01-cp38-cp38-linux_aarch64.whl
 
 ## For Jetpack 6.0 DeveloperPreview L4T 36.2.0 and Jetpack 6.0 ProductionRelease 36.3.0
 #ARG L4T_VERSION="36.2"
