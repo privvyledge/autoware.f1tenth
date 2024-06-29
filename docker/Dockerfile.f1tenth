@@ -745,8 +745,8 @@ ARG SKIPPED_ROSDEP_KEYS="cmake_modules pacmod3_msgs  python3-open3d \
 #    git clone https://github.com/autowarefoundation/autoware.git -b f1tenth_humble && cd autoware && mkdir src  && \
 #    vcs import src < autoware.repos
 
-######### (optional) Disable git warnings. Or downgrade to version setuptools_scm==5.0.0
-#RUN python3 -m pip uninstall -y setuptools-scm
+######## (optional) Disable git warnings. Or downgrade to version setuptools_scm==5.0.0
+RUN python3 -m pip uninstall -y setuptools-scm
 
 RUN sudo apt update && \
     rosdep update && \
