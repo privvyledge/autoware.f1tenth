@@ -385,7 +385,7 @@ RUN export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/targets/aarch64-linu
 #    rm ${REALSENSE_ROS_VERSION}.zip
 
 # Tested with version 4.55.1
-RUN cd ${BUILD_HOME}/src && git clone https://github.com/privvyledge/realsense-ros.git
+RUN cd ${BUILD_HOME}/src && git clone -b v4.55.1 https://github.com/privvyledge/realsense-ros.git
 
 #################################################### Setup RTAB-Map (which also publishes odometry from laser_scan)
 # RUN cd "$BUILD_HOME/src" && git clone https://github.com/introlab/rtabmap.git && git clone https://github.com/introlab/rtabmap_ros.git -b ${ROS_DISTRO}-devel
@@ -817,33 +817,33 @@ RUN echo 'alias build="colcon build --symlink-install  --event-handlers console_
 ## RUN ros2 doctor # run this if the LIDAR doesn't run (https://github.com/YDLIDAR/ydlidar_ros2_driver/issues/10)
 
 ## Todo: remove the lines below in Release/production version
-RUN sudo apt update && sudo apt install gedit cheese nautilus net-tools iputils-ping -y
+RUN sudo apt update && sudo apt install gedit cheese nautilus net-tools iputils-ping nano -y
 
-############## Temporary Open3D stuff
-RUN sudo apt remove python3-open3d && python3 -m pip uninstall open3d && \
-    cd /sdks && \
-#    git clone https://github.com/isl-org/Open3D.git && \
-    git clone https://github.com/rislab/Open3D.git && \
-    cd Open3D && \
-    ./util/install_deps_ubuntu.sh assume-yes && \
-    mkdir build && cd build && git clone https://github.com/isl-org/Open3D-ML.git && \
-#    export PATH=${PATH}:/usr/local/cuda-12.2/bin && export CUDACXX=/usr/local/cuda-12.2/bin/nvcc && \
-    cmake  \
-      -DBUILD_CUDA_MODULE=ON \
-      -DCUDAToolkit_ROOT=/usr/local/cuda-12.2/lib \
-      -DCMAKE_BUILD_TYPE=Release \
-      -DBUILD_GUI=ON \
-#      -DGLIBCXX_USE_CXX11_ABI=OFF \
-      -DBUILD_PYTORCH_OPS=ON \
-      -DBUILD_TENSORFLOW_OPS=OFF \
-      -DBUNDLE_OPEN3D_ML=ON \
-      -DBUILD_LIBREALSENSE=OFF \
-#      -DBUILD_JUPYTER_EXTENSION:BOOL=TRUE \
-#      -DBUILD_WEBRTC=ON \
-      -DCMAKE_INSTALL_PREFIX=/sdks/open3d_install \
-      -DPython3_ROOT=/usr/bin/python3 \
-      -DOPEN3D_ML_ROOT=Open3D-ML \
-#      -DBUILD_UNIT_TESTS:BOOL=OFF \
-      .. && \
-    make -j$(($(nproc)-1)) && \
-    make install-pip-package && sudo make install
+############### Temporary Open3D stuff
+#RUN sudo apt remove -y python3-open3d && python3 -m pip uninstall open3d && \
+#    cd /sdks && \
+##    git clone https://github.com/isl-org/Open3D.git && \
+#    git clone https://github.com/rislab/Open3D.git && \
+#    cd Open3D && \
+#    ./util/install_deps_ubuntu.sh assume-yes && \
+#    mkdir build && cd build && git clone https://github.com/isl-org/Open3D-ML.git && \
+##    export PATH=${PATH}:/usr/local/cuda-12.2/bin && export CUDACXX=/usr/local/cuda-12.2/bin/nvcc && \
+#    cmake  \
+#      -DBUILD_CUDA_MODULE=ON \
+#      -DCUDAToolkit_ROOT=/usr/local/cuda-12.2/lib \
+#      -DCMAKE_BUILD_TYPE=Release \
+#      -DBUILD_GUI=ON \
+##      -DGLIBCXX_USE_CXX11_ABI=OFF \
+#      -DBUILD_PYTORCH_OPS=ON \
+#      -DBUILD_TENSORFLOW_OPS=OFF \
+#      -DBUNDLE_OPEN3D_ML=ON \
+#      -DBUILD_LIBREALSENSE=OFF \
+##      -DBUILD_JUPYTER_EXTENSION:BOOL=TRUE \
+##      -DBUILD_WEBRTC=ON \
+#      -DCMAKE_INSTALL_PREFIX=/sdks/open3d_install \
+#      -DPython3_ROOT=/usr/bin/python3 \
+#      -DOPEN3D_ML_ROOT=Open3D-ML \
+##      -DBUILD_UNIT_TESTS:BOOL=OFF \
+#      .. && \
+#    make -j$(($(nproc)-1)) && \
+#    make install-pip-package && sudo make install
