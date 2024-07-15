@@ -188,9 +188,9 @@ RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install
     sudo rm -rf /var/lib/apt/lists/*
 
 #################################################### (Optional) Setup F1tenth. Todo: setup IMU fix on humble branch
-RUN cd "$BUILD_HOME/src" && rm -rf f1tenth_system && git clone https://github.com/privvyledge/f1tenth_system.git -b foxy-devel && \
+RUN cd "$BUILD_HOME/src" && rm -rf f1tenth_system && git clone https://github.com/privvyledge/f1tenth_system.git -b humble-devel && \
     cd f1tenth_system && git submodule update --init --force --remote && \
-    cd vesc && git checkout ros2_motor_direction_fix
+    cd vesc && git checkout humble-devel
 #################################################### (Optional) Setup VESC
 
 #################################################### (Optional) Setup ROS Nav
