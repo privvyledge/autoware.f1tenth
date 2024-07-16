@@ -164,7 +164,7 @@ RUN python3 -m pip install -U \
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1
 
 # Install Python Packages.
-RUN python3 -m pip install do-mpc casadi
+RUN python3 -m pip install do-mpc casadi kornia==0.7.3 networkx
 
 # Initialize ROS workspace
 ENV BUILD_HOME=/f1tenth_ws
@@ -193,17 +193,19 @@ RUN cd "$BUILD_HOME/src" && rm -rf f1tenth_system && git clone https://github.co
     cd vesc && git checkout humble-devel
 #################################################### (Optional) Setup VESC
 
-#################################################### (Optional) Setup ROS Nav
-RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
-    ros-${ROS_DISTRO}-behaviortree-cpp-v3 \
-    ros-${ROS_DISTRO}-nav2-msgs \
-    ros-${ROS_DISTRO}-navigation2 \
-    ros-${ROS_DISTRO}-nav2-bringup && \
-    sudo rm -rf /var/lib/apt/lists/*
-# RUN  sudo apt remove ros-humble-navigation2 ros-humble-nav2* && sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
-#    ros-${ROS_DISTRO}-gazebo-ros-pkgs && \
-#    cd "$BUILD_HOME/src" && git clone --recursive https://github.com/ros-planning/navigation2.git -b ${ROS_DISTRO} && \
+#################################################### (Optional) Setup ROS Nav.
+# Recommended: build to get the latest bug fixes
+#RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+#    ros-${ROS_DISTRO}-behaviortree-cpp-v3 \
+#    ros-${ROS_DISTRO}-nav2-msgs \
+#    ros-${ROS_DISTRO}-navigation2 \
+#    ros-${ROS_DISTRO}-nav2-bringup && \
 #    sudo rm -rf /var/lib/apt/lists/*
+ RUN  sudo apt remove -y ros-humble-navigation2 ros-humble-nav2* && \
+    sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+    ros-${ROS_DISTRO}-gazebo-ros-pkgs ros-${ROS_DISTRO}-behaviortree-cpp-v3 && \
+    cd "$BUILD_HOME/src" && git clone --recursive https://github.com/ros-planning/navigation2.git -b ${ROS_DISTRO} && \
+    sudo rm -rf /var/lib/apt/lists/*
 
 #-------------------------------------------------
 # Setup Spatio Temporal Voxel Layer (STVL) and other voxel packages for 3D occupancy representation. Can install from debs if 3+ hours compile time is too long.
@@ -253,10 +255,12 @@ RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install
     cd "$BUILD_HOME/src" && git clone https://github.com/ros-perception/laser_filters.git -b ros2
 
 #################################################### Setup depth image to laser scan. No need as its already in the container
-RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
-    ros-${ROS_DISTRO}-depthimage-to-laserscan  && \
-    sudo rm -rf /var/lib/apt/lists/*
-# RUN #cd "$BUILD_HOME/src" && git clone https://github.com/ros-perception/depthimage_to_laserscan.git -b ros2
+#RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+#    ros-${ROS_DISTRO}-depthimage-to-laserscan  && \
+#    sudo rm -rf /var/lib/apt/lists/*
+# RUN cd "$BUILD_HOME/src" && git clone https://github.com/ros-perception/depthimage_to_laserscan.git -b ros2
+## Switch back to the main branch above after this pull request has been merged or any other fix for the QoS issues (https://github.com/ros-perception/depthimage_to_laserscan/pull/76)
+RUN cd "$BUILD_HOME/src" && git clone https://github.com/Myzhar/depthimage_to_laserscan.git -b ros2_fix_qos_for_ipc
 
 #################################################### Setup rf2o laser odometry
 RUN cd "$BUILD_HOME/src" && git clone https://github.com/MAPIRlab/rf2o_laser_odometry.git
@@ -497,15 +501,10 @@ RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install
 ## To build, see https://www.open3d.org/docs/release/arm.html#building-open3d-python-wheel-with-docker
 ## todo: compile from source with CUDA support
 ##-----------------------------------------------
-## Todo: test Open3D and Open3D ML with cuda 12.2 then Install CUDA 11.8 if it fails
-##RUN sudo apt update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
-##    cuda-11-8 cuda-toolkit-11-8 cuda-compat-11-8 cuda-cudart-11-8 cuda-libraries-11-8
-#
-##RUN python3 -m pip install open3d
-RUN sudo apt update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends python3-open3d
+RUN sudo apt remove -y python3-open3d &&  python3 -m pip install open3d==0.18.0
 ## todo: use rislab's fork till the main Open3D repo fixes Jetson CUDA compilation issues
 ## Todo: test realsense support
-#RUN sudo apt remove python3-open3d && python3 -m pip uninstall open3d && \
+#RUN sudo apt remove -y python3-open3d && python3 -m pip uninstall open3d && \
 #    cd /sdks && \
 ##    git clone https://github.com/isl-org/Open3D.git && \
 #    git clone https://github.com/rislab/Open3D.git && \
@@ -733,7 +732,7 @@ ENV PYTHONWARNINGS=ignore:::setuptools.command.install,ignore:::setuptools.comma
 
 WORKDIR $BUILD_HOME
 #ARG MAKEFLAGS="-j4 -l4"
-ARG SKIPPED_ROSDEP_KEYS="cmake_modules pacmod3_msgs  python3-open3d \
+ARG SKIPPED_ROSDEP_KEYS="cmake_modules pacmod3_msgs  python3-open3d open3d \
     librealsense2 realsense2_camera libopencv-dev  libopencv-contrib-dev libopencv-imgproc-dev python-opencv python3-opencv"
 
 ################# Temporarily setup autoware f1tenth_humble branch. todo: remove
