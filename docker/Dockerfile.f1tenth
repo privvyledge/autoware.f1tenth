@@ -513,7 +513,7 @@ RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install
 ## To build, see https://www.open3d.org/docs/release/arm.html#building-open3d-python-wheel-with-docker
 ## todo: compile from source with CUDA support
 ##-----------------------------------------------
-RUN sudo apt remove -y python3-open3d &&  python3 -m pip install open3d==0.18.0
+RUN python3 -m pip install "open3d==0.18.0"
 ## todo: use rislab's fork till the main Open3D repo fixes Jetson CUDA compilation issues
 ## Todo: test realsense support
 #RUN sudo apt remove -y python3-open3d && python3 -m pip uninstall open3d && \
@@ -620,7 +620,7 @@ RUN --mount=type=cache,target=/var/cache/apt \
     && sudo apt-get clean
 
 # Additional Python dependencies. Try with -U flag
-RUN python3 -m pip install -U \
+RUN python3 -m pip install \
     Cython \
     pymongo \
     wheel \
