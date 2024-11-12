@@ -846,6 +846,7 @@ RUN echo 'alias build="colcon build --symlink-install  --event-handlers console_
     echo 'export ACADOS_PATH=${ACADOS_ROOT}' >> ~/.bashrc && \
     echo 'export ACADOS_SOURCE_DIR=${ACADOS_ROOT}' >> ~/.bashrc && \
     echo 'export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${ACADOS_ROOT}/lib' >> ~/.bashrc && \
+    echo 'export LD_PRELOAD=/sdks/open3d_install/lib/libOpen3D.so' >> ~/.bashrc && \
     echo "export CCACHE_DIR=/ccache" >> ~/.bashrc  && \
     echo "export CC='/usr/lib/ccache/gcc'" >> ~/.bashrc  && \
     echo "export CXX='/usr/lib/ccache/g++'" >> ~/.bashrc  && \
