@@ -1,4 +1,4 @@
-# todo: install OpenCV and Open3D with CUDA
+# todo: use ENVs instead of exporting
 # todo: investigate https://github.com/amadeuszsz/ct_icp and compare with Kiss-ICP
 #FROM privvyledge/ros:humble-desktop-full-cuda-11-8
 FROM privvyledge/ros:humble-desktop-full-cuda-12-2
@@ -19,7 +19,7 @@ RUN groupadd --gid $USER_GID $USERNAME && \
         useradd --uid $USER_UID --gid $USER_GID -m $USERNAME && \
         echo "$USERNAME:$USERNAME" | chpasswd && \
         usermod --shell /bin/bash $USERNAME && \
-        usermod -aG sudo,video $USERNAME && \
+        usermod -aG sudo,video,audio,render $USERNAME && \
         usermod  --uid $USER_UID $USERNAME && \
         echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/$USERNAME && \
         chmod 0440 /etc/sudoers.d/$USERNAME
@@ -267,7 +267,10 @@ RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install
 #    sudo rm -rf /var/lib/apt/lists/*
 # RUN cd "$BUILD_HOME/src" && git clone https://github.com/ros-perception/depthimage_to_laserscan.git -b ros2
 ## Switch back to the main branch above after this pull request has been merged or any other fix for the QoS issues (https://github.com/ros-perception/depthimage_to_laserscan/pull/76)
-RUN cd "$BUILD_HOME/src" && git clone https://github.com/Myzhar/depthimage_to_laserscan.git -b ros2_fix_qos_for_ipc
+RUN cd "$BUILD_HOME/src" && git clone https://github.com/marcusvinicius178/depthimage_to_laserscan.git -b fix-QoS-issue
+
+# Allows overriding the QoS but doesn't work for now.
+#RUN cd "$BUILD_HOME/src" && git clone https://github.com/Myzhar/depthimage_to_laserscan.git -b ros2_fix_qos_for_ipc
 
 #################################################### Setup rf2o laser odometry
 RUN cd "$BUILD_HOME/src" && git clone https://github.com/MAPIRlab/rf2o_laser_odometry.git
@@ -292,6 +295,18 @@ RUN git clone https://github.com/privvyledge/autoware.f1tenth.git && cd autoware
     vcs import src < autoware.repos && \
     chmod +x install_autoware_dependencies.sh && ./install_autoware_dependencies.sh
 
+# Use ansible to download Autoware artifacts. todo: test
+RUN sudo apt-get -y update && \
+    cd ${BUILD_HOME}/src/autoware.f1tenth && \
+    python3 -m pip install --user pipx && \
+    python3 -m pipx ensurepath && \
+    export PATH="${PIPX_BIN_DIR:=$HOME/.local/bin}:$PATH" && \
+    pipx install --include-deps --force "ansible==6.*" && \
+    ansible-galaxy collection install -f -r "ansible-galaxy-requirements.yaml" && \
+    ansible-playbook autoware.dev_env.download_artifacts -e "data_dir=/${HOME}/autoware_data" && \
+    python3 -m pip uninstall -y ansible ansible-core && \
+    sudo apt-get autoremove -y && rm -rf "$HOME"/.cache
+
 WORKDIR /sdks
 
 # Install Acados.
@@ -315,6 +330,7 @@ RUN mkdir -p "/sdks/" && cd "/sdks/" && \
         -DCMAKE_BUILD_TYPE=Release \
         -DACADOS_NUM_THREADS=${ACADOS_NUM_THREADS} \
         -DACADOS_WITH_OPENMP=${ACADOS_OPENMP_PARALLELIZATION_ENABLED} .. && \
+    make -j$(($(nproc)-1)) && \
     sudo make install -j$(nproc) && \
     python3 -m pip install -e ${ACADOS_ROOT}/interfaces/acados_template && \
 #    curl https://sh.rustup.rs -sSf | sh -s -- -y && source $HOME/.cargo/env && \
@@ -434,6 +450,13 @@ RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install
     sudo rm -rf /var/lib/apt/lists/*
 
 #----------------------------------------------
+# Install Plot Juggler
+#----------------------------------------------
+RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+    ros-${ROS_DISTRO}-plotjuggler-ros && \
+    sudo rm -rf /var/lib/apt/lists/*
+
+#----------------------------------------------
 # Install Image Transport Plugin to ideally reduce cpu usage when publishing images
 #----------------------------------------------
 RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
@@ -511,37 +534,50 @@ RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install
 ##-----------------------------------------------
 ## Install/build Open3D (https://www.open3d.org/docs/release/arm.html). Doesn't work in dusty-nv container but works in Nvidia Isaac ROS container.
 ## To build, see https://www.open3d.org/docs/release/arm.html#building-open3d-python-wheel-with-docker
-## todo: compile from source with CUDA support
+# Note: for now the main Open3D branch does not compile with Jetson, so use the rislab fork. Also, do not build ML/Pytorch ops.
+# Do not install via Pip on Jetsons as it only installs CPU versions
 ##-----------------------------------------------
-RUN python3 -m pip install "open3d==0.18.0"
-## todo: use rislab's fork till the main Open3D repo fixes Jetson CUDA compilation issues
-## Todo: test realsense support
-#RUN sudo apt remove -y python3-open3d && python3 -m pip uninstall open3d && \
-#    cd /sdks && \
-##    git clone https://github.com/isl-org/Open3D.git && \
-#    git clone https://github.com/rislab/Open3D.git && \
-#    cd Open3D && \
-#    ./util/install_deps_ubuntu.sh assume-yes && \
-#    mkdir build && cd build && git clone https://github.com/isl-org/Open3D-ML.git && \
-##    export PATH=${PATH}:/usr/local/cuda-12.2/bin && export CUDACXX=/usr/local/cuda-12.2/bin/nvcc && \
-#    cmake  \
-#      -DBUILD_CUDA_MODULE=ON \
-#      -DCUDAToolkit_ROOT=/usr/local/cuda-12.2/lib \
-#      -DCMAKE_BUILD_TYPE=Release \
-#      -DBUILD_GUI=ON \
-##      -DGLIBCXX_USE_CXX11_ABI=OFF \
-#      -DBUILD_PYTORCH_OPS=ON \
-#      -DBUILD_TENSORFLOW_OPS=OFF \
-#      -DBUNDLE_OPEN3D_ML=ON \
-#      -DBUILD_LIBREALSENSE=OFF \
-##      -DBUILD_JUPYTER_EXTENSION:BOOL=TRUE \
-##      -DBUILD_WEBRTC=ON \
-#      -DCMAKE_INSTALL_PREFIX=/sdks/open3d_install \
-#      -DPython3_ROOT=/usr/bin/python3 \
-#      -DOPEN3D_ML_ROOT=Open3D-ML \
-#      .. && \
-#    make -j$(($(nproc)-1)) && \
-#    make install-pip-package && sudo make install
+#RUN python3 -m pip install "open3d==0.18.0"
+## use rislab's fork till the main Open3D repo fixes Jetson CUDA compilation issues
+## Todo: test GUI=ON, VTK from source instead of system, realsense support,
+## Todo: test without specifying compiler options
+ARG ORIN_GPU_ARCHITECTURE="72;86;87"
+RUN sudo apt remove -y python3-open3d && python3 -m pip uninstall open3d && \
+    cd /sdks && \
+#    git clone https://github.com/isl-org/Open3D.git && \
+    git clone https://github.com/rislab/Open3D.git && \
+    cd Open3D && \
+    git checkout 8f00080 && \
+    bash ./util/install_deps_ubuntu.sh assume-yes && \
+    sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+    git xorg-dev libxcb-shm0 libglu1-mesa-dev python3-dev clang libc++-dev libc++abi-dev libsdl2-dev ninja-build libxi-dev libtbb-dev \
+    libosmesa6-dev libudev-dev autoconf libtool gfortran && sudo rm -rf /var/lib/apt/lists/* && \
+    mkdir build && cd build && \
+    export CUDA_HOME=/usr/local/cuda && \
+    export LD_LIBRARY_PATH=/usr/local/cuda/lib64:/usr/local/cuda/extras/CUPTI/lib64:/usr/local/cuda/targets/aarch64-linux/lib/stubs:/opt/ros/${ROS_DISTRO}/install/lib:$LD_LIBRARY_PATH && \
+    export CUDACXX=/usr/local/cuda/bin/nvcc && export PATH=/usr/local/cuda/bin:${PATH} && \
+    export CC=/usr/bin/clang-14 && export CXX=/usr/bin/clang++-14 &&  \
+    cmake  \
+      -DBUILD_SHARED_LIBS=ON \
+      -DWITH_OPENMP=OFF \
+      -DBUILD_CUDA_MODULE=ON \
+      -DCMAKE_CUDA_ARCHITECTURES=${ORIN_GPU_ARCHITECTURE}  \
+      -DCUDAToolkit_ROOT=/usr/local/cuda \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DBUILD_GUI=OFF \
+      -DUSE_SYSTEM_VTK=ON -DBUILD_VTK_FROM_SOURCE=OFF \
+      -DBUILD_PYTORCH_OPS=OFF \
+      -DBUILD_TENSORFLOW_OPS=OFF \
+      -DBUNDLE_OPEN3D_ML=OFF \
+      -DBUILD_LIBREALSENSE=OFF \
+      -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ \
+      -DCMAKE_INSTALL_PREFIX=/sdks/open3d_install \
+      -DBUILD_PYTHON_MODULE=ON  \
+      -DPython3_ROOT=/usr/bin/python3 \
+      -DPython3_EXECUTABLE=/usr/bin/python3 \
+      .. && \
+    make -j$(($(nproc)-1)) && \
+    make install-pip-package && sudo make install
 
 #--------------------------------
 # Setup NVIDIA Isaac packages
@@ -825,32 +861,3 @@ RUN echo 'alias build="colcon build --symlink-install  --event-handlers console_
 
 ## Todo: remove the lines below in Release/production version
 RUN sudo apt update && sudo apt install gedit cheese nautilus net-tools iputils-ping nano -y
-
-############### Temporary Open3D stuff
-#RUN sudo apt remove -y python3-open3d && python3 -m pip uninstall open3d && \
-#    cd /sdks && \
-##    git clone https://github.com/isl-org/Open3D.git && \
-#    git clone https://github.com/rislab/Open3D.git && \
-#    cd Open3D && \
-#    ./util/install_deps_ubuntu.sh assume-yes && \
-#    mkdir build && cd build && git clone https://github.com/isl-org/Open3D-ML.git && \
-##    export PATH=${PATH}:/usr/local/cuda-12.2/bin && export CUDACXX=/usr/local/cuda-12.2/bin/nvcc && \
-#    cmake  \
-#      -DBUILD_CUDA_MODULE=ON \
-#      -DCUDAToolkit_ROOT=/usr/local/cuda-12.2/lib \
-#      -DCMAKE_BUILD_TYPE=Release \
-#      -DBUILD_GUI=ON \
-##      -DGLIBCXX_USE_CXX11_ABI=OFF \
-#      -DBUILD_PYTORCH_OPS=ON \
-#      -DBUILD_TENSORFLOW_OPS=OFF \
-#      -DBUNDLE_OPEN3D_ML=ON \
-#      -DBUILD_LIBREALSENSE=OFF \
-##      -DBUILD_JUPYTER_EXTENSION:BOOL=TRUE \
-##      -DBUILD_WEBRTC=ON \
-#      -DCMAKE_INSTALL_PREFIX=/sdks/open3d_install \
-#      -DPython3_ROOT=/usr/bin/python3 \
-#      -DOPEN3D_ML_ROOT=Open3D-ML \
-##      -DBUILD_UNIT_TESTS:BOOL=OFF \
-#      .. && \
-#    make -j$(($(nproc)-1)) && \
-#    make install-pip-package && sudo make install
