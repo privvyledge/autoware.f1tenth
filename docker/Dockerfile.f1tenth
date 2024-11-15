@@ -300,12 +300,13 @@ RUN sudo apt-get -y update && \
     cd ${BUILD_HOME}/src/autoware.f1tenth && \
     python3 -m pip install --user pipx && \
     python3 -m pipx ensurepath && \
-    export PATH="${PIPX_BIN_DIR:=$HOME/.local/bin}:$PATH" && \
+    export PATH="${PIPX_BIN_DIR:=/home/$USERNAME/.local/bin}:$PATH" && \
     pipx install --include-deps --force "ansible==6.*" && \
     ansible-galaxy collection install -f -r "ansible-galaxy-requirements.yaml" && \
-    ansible-playbook autoware.dev_env.download_artifacts -e "data_dir=/${HOME}/autoware_data" && \
+    ansible-playbook autoware.dev_env.download_artifacts -e "data_dir=/home/$USERNAME/autoware_data" && \
     python3 -m pip uninstall -y ansible ansible-core && \
-    sudo apt-get autoremove -y && rm -rf "$HOME"/.cache
+    sudo apt-get autoremove -y && rm -rf "$HOME"/.cache && \
+    chown -R $USERNAME /home/${USERNAME}/autoware_data
 
 WORKDIR /sdks
 
@@ -480,10 +481,10 @@ RUN cd ${BUILD_HOME}/src && git clone https://github.com/privvyledge/ros_images_
 #----------------------------------------------
 # Install YOLOv8 and corresponding ROS nodes
 # YOLOv8 nodes.
-# Downgrade numpy to 1.23.5 if np.bool depracation errors occure
+# Downgrade numpy to 1.23.5 if np.bool depracation errors occur
 # Note that downgrading numpy might cause issues with other python packages, i.e onnxruntime-gpu and tensorflow as they require higher numpy versions. Could use a pytorch only base image instead.
 # To export to tensorrt
-# Using the command line:
+# Using the command line: yolo export model="/shared_dir/models/detection/yolo/yolov8n-seg.pt" half=True simplify=True format=engine
 # Using python: python3 -c "from ultralytics import YOLO;model = YOLO('yolov8s.pt');model.export(format='engine', half=True, simplify=True)"
 
 # YOLOv8 ROS Usage. todo: put in launch files:
@@ -521,7 +522,7 @@ RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install
 #----------------------------------
 RUN cd ${BUILD_HOME}/src && \
     GIT_LFS_SKIP_SMUDGE=1 git clone -b humble-devel https://github.com/Alpaca-zip/ultralytics_ros.git && \
-    git clone https://github.com/mgonzs13/yolov8_ros.git && \
+    git clone https://github.com/mgonzs13/yolo_ros.git && \
     sudo rm -rf /var/lib/apt/lists/*
 
 #----------------------------------------------
@@ -539,7 +540,7 @@ RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install
 ##-----------------------------------------------
 #RUN python3 -m pip install "open3d==0.18.0"
 ## use rislab's fork till the main Open3D repo fixes Jetson CUDA compilation issues
-## Todo: test GUI=ON, VTK from source instead of system, realsense support,
+## Todo:  realsense support,
 ## Todo: test without specifying compiler options
 ARG ORIN_GPU_ARCHITECTURE="72;86;87"
 RUN sudo apt remove -y python3-open3d && python3 -m pip uninstall open3d && \
@@ -565,7 +566,7 @@ RUN sudo apt remove -y python3-open3d && python3 -m pip uninstall open3d && \
       -DCUDAToolkit_ROOT=/usr/local/cuda \
       -DCMAKE_BUILD_TYPE=Release \
       -DBUILD_GUI=OFF \
-      -DUSE_SYSTEM_VTK=ON -DBUILD_VTK_FROM_SOURCE=OFF \
+#      -DUSE_SYSTEM_VTK=OFF -DBUILD_VTK_FROM_SOURCE=ON \
       -DBUILD_PYTORCH_OPS=OFF \
       -DBUILD_TENSORFLOW_OPS=OFF \
       -DBUNDLE_OPEN3D_ML=OFF \
@@ -857,6 +858,7 @@ RUN echo 'alias build="colcon build --symlink-install  --event-handlers console_
     echo "source /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash" >> ~/.bashrc
 
 #RUN sudo rm -rf /sdks
+RUN rm -rf /sdks/librealsense/build /sdks/Open3D/build
 
 ## RUN ros2 doctor # run this if the LIDAR doesn't run (https://github.com/YDLIDAR/ydlidar_ros2_driver/issues/10)
 
