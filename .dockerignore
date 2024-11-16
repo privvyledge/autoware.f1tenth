@@ -9,15 +9,14 @@
 # Ignore Docker files
 docker
 !docker/etc
+!docker/scripts
 
 # Ignore a part of files under src
 src/**/.*
 src/**/*.asc
-src/**/*.csv
 src/**/*.gif
 src/**/*.md
 src/**/*.pcd
-src/**/*.png
 src/**/*.svg
 
 # Ignore generated files by colcon

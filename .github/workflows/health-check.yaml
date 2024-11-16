@@ -26,25 +26,9 @@ jobs:
 
   docker-build:
     needs: load-env
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
-      matrix:
-        name:
-          - no-cuda
-          - cuda
-        include:
-          - name: no-cuda
-            platform: amd64
-            base_image_env: base_image
-            lib_dir: x86_64
-            setup-args: --no-nvidia
-            additional-tag-suffix: ""
-          - name: cuda
-            platform: amd64
-            base_image_env: base_image
-            lib_dir: x86_64
-            additional-tag-suffix: -cuda
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -60,15 +44,14 @@ jobs:
       - name: Build 'Autoware'
         uses: ./.github/actions/docker-build
         with:
-          name: ${{ matrix.name }}
-          platform: ${{ matrix.platform }}
+          platform: amd64
           cache-tag-suffix: main
           build-args: |
             ROS_DISTRO=${{ needs.load-env.outputs.rosdistro }}
-            BASE_IMAGE=${{ needs.load-env.outputs[format('{0}', matrix.base_image_env)] }}
-            SETUP_ARGS=${{ matrix.setup-args }}
-            LIB_DIR=${{ matrix.lib_dir }}
+            BASE_IMAGE=${{ needs.load-env.outputs.base_image }}
+            LIB_DIR=x86_64
 
       - name: Show disk space
+        if: always()
         run: |
           df -h
