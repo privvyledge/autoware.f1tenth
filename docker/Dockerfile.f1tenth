@@ -144,8 +144,10 @@ RUN --mount=type=cache,target=/var/cache/apt \
         python3-pytest-rerunfailures \
         quilt
 
+RUN python3 -m pip install -U pip setuptools wheel
+
 # ROS Python fundamentals. The -U flag will update numpy but downstream commands will install 1.26.6
-RUN python3 -m pip install -U \
+RUN python3 -m pip install \
         flake8-blind-except \
         flake8-builtins \
         flake8-class-newline \
@@ -164,7 +166,7 @@ RUN python3 -m pip install -U \
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1
 
 # Install Python Packages.
-RUN python3 -m pip install do-mpc casadi kornia==0.7.3 networkx
+RUN python3 -m pip install do-mpc "casadi<=3.6.6" kornia==0.7.3 networkx
 
 # Initialize ROS workspace
 ENV BUILD_HOME=/f1tenth_ws
@@ -187,10 +189,14 @@ RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install
     python3 -m pip install transforms3d numpy && \
     sudo rm -rf /var/lib/apt/lists/*
 
-#################################################### (Optional) Setup F1tenth and VESC.
-RUN cd "$BUILD_HOME/src" && rm -rf f1tenth_system && git clone https://github.com/privvyledge/f1tenth_system.git -b humble-devel && \
+#################################################### Setup F1tenth and VESC.
+RUN cd "$BUILD_HOME/src" && rm -rf f1tenth_system && \
+    git clone https://github.com/privvyledge/f1tenth_system.git -b humble-devel && \
     cd f1tenth_system && git submodule update --init --force --remote && \
-    cd vesc && git checkout humble-devel
+    cd vesc && git checkout humble-devel && \
+    sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+    ros-${ROS_DISTRO}-asio-cmake-module && \
+    sudo rm -rf /var/lib/apt/lists/*
 
 #################################################### Setup gazebo sources due to key change issue
 #RUN sudo wget https://packages.osrfoundation.org/gazebo.gpg -O /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg && \
@@ -298,7 +304,7 @@ RUN git clone https://github.com/privvyledge/autoware.f1tenth.git && cd autoware
 ## Use ansible to download Autoware artifacts. fails. Do outside of the container
 #RUN sudo apt-get -y update && \
 #    cd ${BUILD_HOME}/src/autoware.f1tenth && \
-#    python3 -m pip install --user pipx && \
+#    python3 -m pip install pipx && \
 #    python3 -m pipx ensurepath && \
 #    export PATH="${PIPX_BIN_DIR:=/home/$USERNAME/.local/bin}:$PATH" && \
 #    pipx install --include-deps --force "ansible==6.*" && \
@@ -457,7 +463,7 @@ RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install
     ros-${ROS_DISTRO}-plotjuggler-ros && \
     sudo rm -rf /var/lib/apt/lists/*
 
-#----------------------------------------------
+#----------------------------------------------`
 # Install Image Transport Plugin to ideally reduce cpu usage when publishing images
 #----------------------------------------------
 RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
@@ -566,18 +572,19 @@ RUN python3 -m pip uninstall open3d && \
       -DCUDAToolkit_ROOT=/usr/local/cuda \
       -DCMAKE_BUILD_TYPE=Release \
       -DBUILD_GUI=OFF \
-#      -DUSE_SYSTEM_VTK=OFF -DBUILD_VTK_FROM_SOURCE=ON \
+      -DUSE_SYSTEM_VTK=ON -DBUILD_VTK_FROM_SOURCE=OFF \
       -DBUILD_PYTORCH_OPS=OFF \
       -DBUILD_TENSORFLOW_OPS=OFF \
       -DBUNDLE_OPEN3D_ML=OFF \
       -DBUILD_LIBREALSENSE=OFF \
       -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ \
       -DCMAKE_INSTALL_PREFIX=/sdks/open3d_install \
-      -DBUILD_PYTHON_MODULE=ON  \
-      -DPython3_ROOT=/usr/bin/python3 \
+#      -DBUILD_PYTHON_MODULE=ON  \
       -DPython3_EXECUTABLE=/usr/bin/python3 \
+      -DCMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined"  --no-warn-unused-cli \
       .. && \
     make -j$(($(nproc)-1)) && \
+    sudo apt remove python3-blinker -y && \
     make install-pip-package && sudo make install
 
 #--------------------------------

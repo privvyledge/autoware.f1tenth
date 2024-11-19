@@ -76,26 +76,26 @@ repositories:
     url: https://github.com/tier4/glog.git
     version: v0.6.0_t4-ros
   ######### Custom additions
-  universe/external/twist2odom:
-    type: git
-    url: https://github.com/PPI-PUT/twist2odom.git
-    version: master
-  universe/external/trajectory_loader:
-    type: git
-    url: https://github.com/privvyledge/trajectory_loader.git
-    version: master
-  universe/external/pgm_to_lanelet:
-    type: git
-    url: https://github.com/PPI-PUT/pgm_to_lanelet.git
-    version: master
+  #universe/external/twist2odom:
+  #  type: git
+  #  url: https://github.com/PPI-PUT/twist2odom.git
+  #  version: master
+  #universe/external/trajectory_loader:
+  #  type: git
+  #  url: https://github.com/privvyledge/trajectory_loader.git
+  #  version: master
+  #universe/external/pgm_to_lanelet:
+  #  type: git
+  #  url: https://github.com/PPI-PUT/pgm_to_lanelet.git
+  #  version: master
   #universe/external/vesc:
   #  type: git
   #  url: https://github.com/privvyledge/vesc.git
   #  version: ros2
-  universe/external/vesc_interface:
-    type: git
-    url: https://github.com/PPI-PUT/vesc_interface.git  # https://github.com/amadeuszsz/vesc_interface.git
-    version: master
+  #universe/external/vesc_interface:
+  #  type: git
+  #  url: https://github.com/PPI-PUT/vesc_interface.git  # https://github.com/amadeuszsz/vesc_interface.git
+  #  version: master
   #universe/external/slam_toolbox:
   #  type: git
   #  url: https://github.com/SteveMacenski/slam_toolbox.git
