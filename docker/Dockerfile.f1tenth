@@ -301,19 +301,6 @@ RUN git clone https://github.com/privvyledge/autoware.f1tenth.git && cd autoware
     vcs import src < autoware.repos && \
     chmod +x install_autoware_dependencies.sh && ./install_autoware_dependencies.sh
 
-## Use ansible to download Autoware artifacts. fails. Do outside of the container
-#RUN sudo apt-get -y update && \
-#    cd ${BUILD_HOME}/src/autoware.f1tenth && \
-#    python3 -m pip install pipx && \
-#    python3 -m pipx ensurepath && \
-#    export PATH="${PIPX_BIN_DIR:=/home/$USERNAME/.local/bin}:$PATH" && \
-#    pipx install --include-deps --force "ansible==6.*" && \
-#    ansible-galaxy collection install -f -r "ansible-galaxy-requirements.yaml" && \
-#    ansible-playbook autoware.dev_env.download_artifacts -e "data_dir=/home/$USERNAME/autoware_data" && \
-#    python3 -m pip uninstall -y ansible ansible-core && \
-#    sudo apt-get autoremove -y && rm -rf "$HOME"/.cache && \
-#    chown -R $USERNAME /home/${USERNAME}/autoware_data
-
 WORKDIR /sdks
 
 # Install Acados.
@@ -463,7 +450,7 @@ RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install
     ros-${ROS_DISTRO}-plotjuggler-ros && \
     sudo rm -rf /var/lib/apt/lists/*
 
-#----------------------------------------------`
+#----------------------------------------------
 # Install Image Transport Plugin to ideally reduce cpu usage when publishing images
 #----------------------------------------------
 RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
@@ -543,6 +530,7 @@ RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install
 ## To build, see https://www.open3d.org/docs/release/arm.html#building-open3d-python-wheel-with-docker
 # Note: for now the main Open3D branch does not compile with Jetson, so use the rislab fork. Also, do not build ML/Pytorch ops.
 # Do not install via Pip on Jetsons as it only installs CPU versions
+# VTK can either be built from source or installed via apt.
 ##-----------------------------------------------
 #RUN python3 -m pip install "open3d==0.18.0"
 ## use rislab's fork till the main Open3D repo fixes Jetson CUDA compilation issues
